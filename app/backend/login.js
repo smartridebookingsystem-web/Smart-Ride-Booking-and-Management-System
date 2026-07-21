@@ -6,7 +6,7 @@ app.use(exp.json()); // for JSON
 app.use(exp.urlencoded({ extended: true })); // for form data
 let con = mysql.createConnection({
   host: "localhost",
-  database: "SRBMS",
+  database: "p03_srbms",
   user: "root",
   password: "system",
 });
@@ -23,7 +23,7 @@ app.listen(3000, function () {
 });
 app.post("/login", function (req, res) {
   let { username, password } = req.body;
-  let sql = "SELECT * FROM login WHERE username=? AND password_hash=?";
+  let sql = "SELECT * FROM users WHERE username=? AND password=?";
 
   con.query(sql, [username, password], function (err, results) {
     if (err) {
