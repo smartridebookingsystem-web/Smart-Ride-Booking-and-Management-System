@@ -2,7 +2,7 @@ import { useState } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "./assets/vite.svg";
 import heroImg from "./assets/hero.png";
-import "./App.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 import Login from "./Auth/Login";
 import Home from "./Auth/Home";
 import Register from "./Auth/Register";
@@ -23,9 +23,11 @@ import Earnings from "./components/driver/Earnings";
 import VehicleInfo from "./components/driver/VehicleInfo";
 import Availability from "./components/driver/Availability";
 import Table_Layout from "./Auth/Table_Layout";
-
+import Layout2 from "./Auth/Layout2";
 import RowDetailsModal from "./Auth/RowDetailsModel";
-
+import ForgotPassword from "./Auth/ForgotPassword";
+import Contact from "./components/services/Contact";
+import About from "./components/services/About";
 function App() {
   const [count, setCount] = useState(0);
 
@@ -34,11 +36,14 @@ function App() {
       <div className="container-fluid">
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Layout />}>
+            <Route path="/" element={<Layout2 />}>
               {/* Public Routes */}
               <Route index element={<Home />} />
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
+              <Route path="forgot-password" element={<ForgotPassword />} />
+              <Route path="contact" element={<Contact />} />
+              <Route path="about" element={<About />} />
               <Route path="logout" element={<Logout />} />
 
               {/* Admin Routes */}

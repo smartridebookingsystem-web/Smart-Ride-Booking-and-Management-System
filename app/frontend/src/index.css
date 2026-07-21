@@ -1,108 +1,354 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+/* ==========================================
+   SmartRide Global Theme
+========================================== */
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+:root {
+  /* ---------- Brand Colors ---------- */
+
+  --primary: #ff6b00;
+  --primary-hover: #e65f00;
+
+  /* ---------- Backgrounds ---------- */
+
+  --bg: #f8fafc;
+  --card: #ffffff;
+
+  /* ---------- Text ---------- */
+
+  --text: #000307;
+  --text-h: #111827;
+
+  /* ---------- Borders ---------- */
+
+  --border: #e5e7eb;
+
+  /* ---------- Theme ---------- */
+
+  --accent: #ff6b00;
+  --accent-bg: rgba(255, 107, 0, 0.08);
+  --accent-border: rgba(255, 107, 0, 0.25);
+
+  /* ---------- Sidebar ---------- */
+
+  --sidebar: #0f172a;
+
+  /* ---------- Others ---------- */
+
+  --social-bg: #fff7f2;
+
+  --code-bg: #f3f4f6;
+
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+
+  /* ---------- Fonts ---------- */
+
+  --sans: system-ui, "Segoe UI", Roboto, sans-serif;
+  --heading: system-ui, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  letter-spacing: 0.2px;
+
+  color: var(--text);
+
+  background: var(--bg);
+
+  font-synthesis: none;
+
+  text-rendering: optimizeLegibility;
+
+  -webkit-font-smoothing: antialiased;
+
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* ==========================================
+   Dark Mode
+========================================== */
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+    --bg: #111827;
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+    --card: #03111f;
+
+    --text: #ffffff;
+
+    --text-h: #ffffff;
+
+    --border: #374151;
+
+    --sidebar: #0f172a;
+
+    --code-bg: #000409;
+    /* --code-bg: #1e293b; */
+
+    --accent: #ff6b00;
+
+    --accent-bg: rgba(255, 107, 0, 0.15);
+
+    --accent-border: rgba(255, 107, 0, 0.35);
+
+    --shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
   }
 }
+
+/* ==========================================
+   Body
+========================================== */
 
 body {
   margin: 0;
-}
-#root {
-  width: 100%;
-  min-height: 100vh;
-  margin: 0;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+
+  background: var(--bg);
+
+  color: var(--text);
+
+  font-family: var(--sans);
 }
 
+/* ==========================================
+   Root
+========================================== */
+
+#root {
+  width: 100%;
+
+  min-height: 100vh;
+
+  display: flex;
+
+  flex-direction: column;
+
+  background: var(--bg);
+}
+
+/* ==========================================
+   Headings
+========================================== */
+
 h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
+h2,
+h3,
+h4,
+h5,
+h6 {
   color: var(--text-h);
+
+  font-family: var(--heading);
+
+  font-weight: 700;
+
+  margin-top: 0;
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+  font-size: 3rem;
 }
+
 h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+  font-size: 2rem;
 }
+
+h3 {
+  font-size: 1.6rem;
+}
+
+/* ==========================================
+   Paragraph
+========================================== */
+
 p {
+  color: var(--text);
+
+  line-height: 1.8;
+
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+/* ==========================================
+   Links
+========================================== */
+
+a {
+  text-decoration: none;
+
+  color: var(--primary);
+
+  transition: 0.3s;
 }
 
+a:hover {
+  color: var(--primary-hover);
+}
+
+/* ==========================================
+   Cards
+========================================== */
+
+.card {
+  background: var(--card);
+
+  border: none;
+
+  border-radius: 18px;
+
+  box-shadow: var(--shadow);
+}
+
+/* ==========================================
+   Form Controls
+========================================== */
+
+.form-control,
+.form-select {
+  height: 52px;
+
+  border-radius: 12px;
+
+  border: 1px solid var(--border);
+
+  box-shadow: none;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--primary);
+
+  box-shadow: 0 0 0 0.2rem rgba(255, 107, 0, 0.15);
+}
+
+/* ==========================================
+   Input Groups
+========================================== */
+
+.input-group-text {
+  border-radius: 12px 0 0 12px;
+
+  border: 1px solid var(--border);
+
+  background: white;
+}
+
+/* ==========================================
+   Buttons
+========================================== */
+
+.btn {
+  border-radius: 12px;
+
+  font-weight: 600;
+
+  transition: 0.3s;
+}
+
+.btn-primary {
+  background: var(--primary) !important;
+
+  border-color: var(--primary) !important;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover) !important;
+
+  border-color: var(--primary-hover) !important;
+
+  transform: translateY(-2px);
+}
+
+.btn-outline-primary {
+  color: var(--primary) !important;
+
+  border: 2px solid var(--primary) !important;
+
+  background: white !important;
+}
+
+.btn-outline-primary:hover {
+  background: var(--primary) !important;
+
+  color: white !important;
+}
+
+/* ==========================================
+   Labels
+========================================== */
+
+label {
+  color: var(--text-h);
+
+  font-weight: 600;
+}
+
+/* ==========================================
+   Code
+========================================== */
+
 code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
   background: var(--code-bg);
+
+  border-radius: 6px;
+
+  padding: 4px 8px;
+
+  font-family: var(--mono);
+}
+
+/* ==========================================
+   Alerts
+========================================== */
+
+.alert {
+  border-radius: 12px;
+}
+
+/* ==========================================
+   Tables
+========================================== */
+
+.table {
+  border-radius: 15px;
+
+  overflow: hidden;
+}
+
+/* ==========================================
+   Scrollbar
+========================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+
+  border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-hover);
+}
+
+/* ==========================================
+   Responsive
+========================================== */
+
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2.2rem;
+  }
+
+  h2 {
+    font-size: 1.7rem;
+  }
+
+  .card {
+    border-radius: 16px;
+  }
 }
