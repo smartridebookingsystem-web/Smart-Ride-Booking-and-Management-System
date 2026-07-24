@@ -1,9 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useSelector } from "react-redux";
 
 export default function Layout() {
   const { user } = useSelector((state) => state.auth);
+  const displayName = user?.username || user?.name || user?.phone || user?.email || "User";
+
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const toggleNavbar = () => setIsNavOpen((prev) => !prev);
+  const closeNavbar = () => setIsNavOpen(false);
 
   return (
     <>
@@ -18,10 +23,9 @@ export default function Layout() {
           <button
             className="navbar-toggler ms-auto"
             type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#navbarContent"
+            onClick={toggleNavbar}
             aria-controls="navbarContent"
-            aria-expanded="false"
+            aria-expanded={isNavOpen}
             aria-label="Toggle navigation"
           >
             <span className="navbar-toggler-icon"></span>
@@ -29,29 +33,29 @@ export default function Layout() {
 
           {/* Collapsible Content */}
           <div
-            className="collapse navbar-collapse justify-content-end"
+            className={`collapse navbar-collapse justify-content-end ${isNavOpen ? "show" : ""}`}
             id="navbarContent"
           >
             {user ? (
               <div className="d-flex align-items-lg-center flex-column flex-lg-row mt-3 mt-lg-0">
                 <span className="fw-semibold text-success me-lg-3 mb-2 mb-lg-0">
-                  Welcome, {user.userid}
+                  Welcome, {displayName}
                 </span>
 
-                <NavLink className="btn btn-outline-danger btn-sm" to="/logout">
+                <NavLink className="btn btn-outline-danger btn-sm" to="/logout" onClick={closeNavbar}>
                   Logout
                 </NavLink>
               </div>
             ) : (
               <ul className="navbar-nav align-items-lg-center ms-auto">
                 <li className="nav-item">
-                  <NavLink className="nav-link" to="/login">
+                  <NavLink className="nav-link" to="/login" onClick={closeNavbar}>
                     Login
                   </NavLink>
                 </li>
 
                 <li className="nav-item">
-                  <NavLink className="nav-link" to="/register">
+                  <NavLink className="nav-link" to="/register" onClick={closeNavbar}>
                     Register
                   </NavLink>
                 </li>
@@ -60,6 +64,7 @@ export default function Layout() {
                   <NavLink
                     to="/support"
                     className="btn btn-outline-success btn-sm"
+                    onClick={closeNavbar}
                   >
                     Contact Support
                   </NavLink>

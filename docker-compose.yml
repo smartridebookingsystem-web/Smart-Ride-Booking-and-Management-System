@@ -1,0 +1,136 @@
+services:
+  # MySQL Database Service
+  mysql-db:
+    image: mysql:8.0
+    container_name: srbms-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: system
+      MYSQL_DATABASE: p03_srbms
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./database:/docker-entrypoint-initdb.d
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-psystem"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Java Eureka Server Service
+  eureka-server:
+    build:
+      context: ./app/backend/java/eureka-server
+      dockerfile: Dockerfile
+    container_name: srbms-eureka-server
+    restart: always
+    ports:
+      - "8761:8761"
+    environment:
+      - EUREKA_INSTANCE_HOSTNAME=eureka-server
+
+  # Java Auth Service
+  auth-service:
+    build:
+      context: ./app/backend/java/auth-service
+      dockerfile: Dockerfile
+    container_name: srbms-auth-service
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/p03_srbms?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=system
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - EUREKA_INSTANCE_LEASE_RENEWAL_INTERVAL_IN_SECONDS=5
+      - EUREKA_INSTANCE_LEASE_EXPIRATION_DURATION_IN_SECONDS=10
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+
+  # Java API Gateway Service
+  api-gateway:
+    build:
+      context: ./app/backend/java/api-gateway
+      dockerfile: Dockerfile
+    container_name: srbms-api-gateway
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - EUREKA_CLIENT_REGISTRY_FETCH_INTERVAL_SECONDS=5
+      - EUREKA_INSTANCE_LEASE_RENEWAL_INTERVAL_IN_SECONDS=5
+    depends_on:
+      - eureka-server
+      - auth-service
+
+  # Admin Frontend (Port 5173)
+  frontend-admin:
+    build:
+      context: ./app/frontend
+      dockerfile: Dockerfile
+    container_name: srbms-frontend-admin
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_APP_ROLE=admin
+      - VITE_API_URL=http://localhost:8080
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./app/frontend/src:/app/src
+      - ./app/frontend/vite.config.js:/app/vite.config.js
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    depends_on:
+      - api-gateway
+
+  # Driver Frontend (Port 5174)
+  frontend-driver:
+    build:
+      context: ./app/frontend
+      dockerfile: Dockerfile
+    container_name: srbms-frontend-driver
+    restart: always
+    ports:
+      - "5174:5174"
+    environment:
+      - VITE_APP_ROLE=driver
+      - VITE_API_URL=http://localhost:8080
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./app/frontend/src:/app/src
+      - ./app/frontend/vite.config.js:/app/vite.config.js
+    command: npm run dev -- --host 0.0.0.0 --port 5174
+    depends_on:
+      - api-gateway
+
+  # Rider Frontend (Port 5175)
+  frontend-rider:
+    build:
+      context: ./app/frontend
+      dockerfile: Dockerfile
+    container_name: srbms-frontend-rider
+    restart: always
+    ports:
+      - "5175:5175"
+    environment:
+      - VITE_APP_ROLE=rider
+      - VITE_API_URL=http://localhost:8080
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./app/frontend/src:/app/src
+      - ./app/frontend/vite.config.js:/app/vite.config.js
+    command: npm run dev -- --host 0.0.0.0 --port 5175
+    depends_on:
+      - api-gateway
+
+volumes:
+  mysql_data:

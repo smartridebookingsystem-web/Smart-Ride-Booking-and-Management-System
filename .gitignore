@@ -22,4 +22,7 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+# Java build outputs
+target/
+**/target/
+
