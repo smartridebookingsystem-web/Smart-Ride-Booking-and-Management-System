@@ -1,9 +1,25 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
+import { Link, useNavigate } from "react-router-dom";
 import { authApi } from "../components/services/api";
 import "../App.css";
 
 const Register = () => {
+  const navigate = useNavigate();
+  const authState = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (authState.isAuthenticated && authState.user) {
+      const r = authState.user.role || authState.user.roleName;
+      const userRole = (r === 1 || r === "1" || r === "admin" || r === "ADMIN") ? 1
+                     : (r === 2 || r === "2" || r === "driver" || r === "DRIVER") ? 2 : 3;
+
+      if (userRole === 1) navigate("/admin", { replace: true });
+      else if (userRole === 2) navigate("/driver", { replace: true });
+      else navigate("/rider", { replace: true });
+    }
+  }, [authState, navigate]);
+
   const [formData, setFormData] = useState({
     role: "rider",
     username: "",
@@ -17,15 +33,25 @@ const Register = () => {
     licenseNumber: "",
     vehicleDetails: "",
     profilePhoto: null,
+    licensePdf: null,
   });
 
   const [otpState, setOtpState] = useState({
     code: "",
+    inputCode: "",
     isSent: false,
     isVerified: false,
+    message: "",
+    error: "",
+  });
+
+  const [licenseStatus, setLicenseStatus] = useState({
+    verified: false,
+    message: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   /* ---------------- Handle Input ---------------- */
 
@@ -38,13 +64,13 @@ const Register = () => {
     });
   };
 
-  /* ---------------- Handle File ---------------- */
+  /* ---------------- Handle Files ---------------- */
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
 
     if (file && file.size > 5 * 1024 * 1024) {
-      alert("Maximum file size is 5 MB.");
+      alert("Maximum profile photo size is 5 MB.");
       e.target.value = "";
       return;
     }
@@ -55,65 +81,188 @@ const Register = () => {
     });
   };
 
-  /* ---------------- Send OTP ---------------- */
+  const handleLicensePdfChange = (e) => {
+    const file = e.target.files[0];
 
-  const handleSendOtp = async () => {
-    if (formData.phone.length !== 10) {
-      alert("Enter a valid 10-digit mobile number.");
+    if (file && file.size > 10 * 1024 * 1024) {
+      alert("Maximum license PDF size is 10 MB.");
+      e.target.value = "";
       return;
     }
 
-    await authApi.sendOtp(formData.phone);
-
-    setOtpState({
-      ...otpState,
-      isSent: true,
+    setFormData({
+      ...formData,
+      licensePdf: file,
     });
-
-    alert("OTP sent successfully.");
   };
 
-  /* ---------------- Verify OTP ---------------- */
+  /* ---------------- Send OTP via Fast2SMS (Backend) ---------------- */
 
-  const handleVerifyOtp = async () => {
-    const response = await authApi.verifyOtp(formData.phone, otpState.code);
+  /* ---------------- Field Availability Blur Check ---------------- */
 
-    if (response.success) {
-      setOtpState({
-        ...otpState,
-        isVerified: true,
-      });
-
-      alert("Phone Number Verified Successfully.");
-    } else {
-      alert("Invalid OTP.");
+  const handleBlurField = async (field) => {
+    if (field === "email" && formData.email) {
+      const avail = await authApi.checkAvailability({ email: formData.email.trim() });
+      if (avail && avail.emailExists) {
+        alert(`⚠️ Email "${formData.email}" is already registered! Please enter a different email address or login.`);
+        setFormData((prev) => ({ ...prev, email: "" }));
+      }
+    } else if (field === "username" && formData.username) {
+      const avail = await authApi.checkAvailability({ username: formData.username.trim() });
+      if (avail && avail.usernameExists) {
+        alert(`⚠️ Username "${formData.username}" is already taken! Please choose a different username.`);
+        setFormData((prev) => ({ ...prev, username: "" }));
+      }
     }
   };
 
-  /* ---------------- Submit ---------------- */
+  /* ---------------- Send OTP via Backend (With Duplicate Check) ---------------- */
+
+  const handleSendOtp = async () => {
+    const cleanPhone = formData.phone ? formData.phone.replace(/[^0-9]/g, "") : "";
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      setOtpState((prev) => ({ ...prev, error: "Please enter a valid 10-digit mobile number.", message: "" }));
+      return;
+    }
+
+    setOtpState((prev) => ({ ...prev, error: "", message: "Checking mobile number availability..." }));
+
+    try {
+      // 1. Check if phone is already registered BEFORE sending OTP
+      const avail = await authApi.checkAvailability({ phone: cleanPhone });
+      if (avail && avail.phoneExists) {
+        alert(`⚠️ Mobile number +91${cleanPhone} is already registered! Please enter a different number or login.`);
+        setFormData((prev) => ({ ...prev, phone: "" }));
+        setOtpState({ code: "", inputCode: "", isSent: false, isVerified: false, message: "", error: "" });
+        return;
+      }
+
+      setOtpState((prev) => ({ ...prev, message: "Sending OTP..." }));
+      const result = await authApi.sendOtp(cleanPhone);
+      console.log("[OTP Service] Result:", result);
+
+      setOtpState({
+        code: "",
+        inputCode: "",
+        isSent: true,
+        isVerified: false,
+        message: `📲 OTP sent to +91${cleanPhone}! Check your phone for the 6-digit SMS.`,
+        error: "",
+      });
+    } catch (err) {
+      console.error("[OTP Service] Send OTP error:", err);
+      if (err.message && err.message.toLowerCase().includes("already registered")) {
+        alert(`⚠️ Mobile number +91${cleanPhone} is already registered! Please enter a different number or login.`);
+        setFormData((prev) => ({ ...prev, phone: "" }));
+      }
+      setOtpState({
+        code: "",
+        inputCode: "",
+        isSent: false,
+        isVerified: false,
+        message: "",
+        error: err.message || "Failed to send OTP. Please try again.",
+      });
+    }
+  };
+
+  /* ---------------- Verify OTP via Backend ---------------- */
+
+  const handleVerifyOtp = async () => {
+    const codeToVerify = otpState.inputCode;
+
+    if (!codeToVerify || codeToVerify.length !== 6) {
+      setOtpState((prev) => ({ ...prev, error: "Please enter the complete 6-digit code from your SMS.", message: "" }));
+      return;
+    }
+
+    try {
+      const result = await authApi.verifyOtp(formData.phone, codeToVerify);
+      console.log("[OTP Service] Verify OTP result:", result);
+
+      setOtpState((prev) => ({
+        ...prev,
+        isVerified: true,
+        message: "✅ Mobile Number Verified Successfully!",
+        error: "",
+      }));
+    } catch (err) {
+      console.error("[OTP Service] Verify OTP error:", err);
+      setOtpState((prev) => ({
+        ...prev,
+        error: err.message || "Incorrect OTP. Please check the SMS on your phone and try again.",
+        message: "",
+      }));
+    }
+  };
+
+  /* ---------------- Verify License (With Duplicate Check) ---------------- */
+
+  const handleVerifyLicense = async () => {
+    if (!formData.licenseNumber) {
+      setLicenseStatus({ verified: false, message: "Please enter your Driving License Number first." });
+      return;
+    }
+
+    if (!formData.licensePdf) {
+      setLicenseStatus({ verified: false, message: "Please upload your Driving License Document (Image/PDF) for manual verification." });
+      return;
+    }
+
+    try {
+      const avail = await authApi.checkAvailability({ licenseNo: formData.licenseNumber.trim() });
+      if (avail && avail.licenseExists) {
+        alert(`⚠️ Driving License Number "${formData.licenseNumber}" is already registered with another driver account!`);
+        setFormData((prev) => ({ ...prev, licenseNumber: "", licensePdf: null }));
+        setLicenseStatus({ verified: false, message: "" });
+        return;
+      }
+
+      setLicenseStatus({
+        verified: true,
+        message: "📄 License Document attached successfully! Manual verification will be completed by the Admin upon registration.",
+      });
+    } catch (e) {
+      setLicenseStatus({
+        verified: true,
+        message: "📄 License Document attached successfully! Manual verification will be completed by the Admin upon registration.",
+      });
+    }
+  };
+
+  /* ---------------- Submit Registration ---------------- */
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!otpState.isVerified) {
-      alert("Please verify your mobile number.");
+      alert("Please verify your mobile number via OTP first.");
       return;
     }
 
     if (!formData.profilePhoto) {
-      alert("Upload Profile Photo.");
+      alert("Please upload your Profile Photo.");
+      return;
+    }
+
+    if (formData.role === "driver" && !formData.licenseNumber) {
+      alert("Please provide your Driver License Number.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const { uploadUrl, fileUrl } = await authApi.getSignedUrl(
-        formData.profilePhoto.name,
-      );
+      // 1. Upload Profile Photo to Firebase Cloud Storage
+      const profilePhotoUrl = await authApi.uploadFile(formData.profilePhoto, "profile_photos");
 
-      console.log(uploadUrl);
+      // 2. Upload Driver License PDF to Firebase Cloud Storage (if Driver)
+      let licensePdfUrl = null;
+      if (formData.role === "driver" && formData.licensePdf) {
+        licensePdfUrl = await authApi.uploadFile(formData.licensePdf, "license_pdfs");
+      }
 
+      // 3. Register user with Spring Boot backend
       const finalData = {
         role: formData.role,
         username: formData.username,
@@ -124,18 +273,20 @@ const Register = () => {
         gender: formData.gender,
         address: formData.address,
         emergency_contact: formData.emergencyContact,
-        profile_image: fileUrl,
+        profile_image: profilePhotoUrl,
         license_no: formData.role === "driver" ? formData.licenseNumber : null,
+        licensePdfUrl: licensePdfUrl,
       };
 
       const response = await authApi.register(finalData);
 
-      if (response.success) {
-        alert("Registration Successful.");
+      if (response.userId || response.message) {
+        alert(response.message || "Registration Successful! Please Login.");
+        navigate("/login");
       }
     } catch (err) {
       console.error(err);
-      alert("Registration Failed.");
+      alert(err.message || "Registration Failed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -198,14 +349,17 @@ const Register = () => {
 
               <div className="card-body p-4 p-lg-5">
                 <form onSubmit={handleSubmit}>
+                  {/* Invisible Firebase Recaptcha Container */}
+                  <div id="recaptcha-container"></div>
                   {/* Role */}
 
                   <div className="mb-4">
-                    <label className="form-label fw-semibold">
+                    <label htmlFor="role" className="form-label fw-semibold">
                       Register As
                     </label>
 
                     <select
+                      id="role"
                       className="form-select"
                       name="role"
                       value={formData.role}
@@ -220,11 +374,13 @@ const Register = () => {
                   {/* Profile Photo */}
 
                   <div className="mb-4">
-                    <label className="form-label fw-semibold">
+                    <label htmlFor="profilePhoto" className="form-label fw-semibold">
                       Profile Photo
                     </label>
 
                     <input
+                      id="profilePhoto"
+                      name="profilePhoto"
                       type="file"
                       className="form-control"
                       accept="image/png,image/jpeg"
@@ -237,40 +393,47 @@ const Register = () => {
 
                   <div className="row g-3">
                     <div className="col-md-6">
-                      <label className="form-label fw-semibold">Username</label>
+                      <label htmlFor="reg_username" className="form-label fw-semibold">Username</label>
 
                       <input
+                        id="reg_username"
                         type="text"
+                        autoComplete="username"
                         className="form-control"
                         name="username"
                         value={formData.username}
                         onChange={handleChange}
+                        onBlur={() => handleBlurField("username")}
                         placeholder="Enter Username"
                         required
                       />
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label fw-semibold">
-                        Email Address
+                      <label htmlFor="reg_email" className="form-label fw-semibold">
+                        Email Address (Optional)
                       </label>
 
                       <input
+                        id="reg_email"
                         type="email"
+                        autoComplete="email"
                         className="form-control"
                         name="email"
                         value={formData.email}
                         onChange={handleChange}
-                        placeholder="Enter Email"
-                        required
+                        onBlur={() => handleBlurField("email")}
+                        placeholder="Enter Email (Optional)"
                       />
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label fw-semibold">Password</label>
+                      <label htmlFor="reg_password" className="form-label fw-semibold">Password</label>
 
                       <input
+                        id="reg_password"
                         type="password"
+                        autoComplete="new-password"
                         className="form-control"
                         name="password"
                         value={formData.password}
@@ -278,14 +441,12 @@ const Register = () => {
                         placeholder="Enter Password"
                         required
                       />
-
-                      {/* </div> */}
                     </div>
 
                     {/* Mobile Number */}
 
                     <div className="col-md-6">
-                      <label className="form-label fw-semibold">
+                      <label htmlFor="reg_phone" className="form-label fw-semibold">
                         Mobile Number
                       </label>
 
@@ -295,7 +456,9 @@ const Register = () => {
                         </span>
 
                         <input
+                          id="reg_phone"
                           type="text"
+                          autoComplete="tel"
                           className="form-control"
                           name="phone"
                           value={formData.phone}
@@ -311,7 +474,7 @@ const Register = () => {
                             className="btn btn-primary"
                             onClick={handleSendOtp}
                           >
-                            Send OTP
+                            {otpState.isSent ? "Resend OTP" : "Send OTP"}
                           </button>
                         ) : (
                           <span
@@ -329,15 +492,74 @@ const Register = () => {
                       </div>
                     </div>
 
+                    {/* OTP Code Entry Card (Renders when OTP is sent & not yet verified) */}
+                    {otpState.isSent && !otpState.isVerified && (
+                      <div className="col-12">
+                        <div
+                          className="p-3"
+                          style={{
+                            background: "#EFF6FF",
+                            border: "1px solid #BFDBFE",
+                            borderRadius: "12px",
+                          }}
+                        >
+                          <div className="d-flex justify-content-between align-items-center mb-2">
+                            <label htmlFor="reg_otpCode" className="form-label fw-semibold mb-0 text-primary">
+                              <i className="bi bi-shield-lock-fill me-1"></i>
+                              Enter 6-Digit SMS Verification Code
+                            </label>
+                          </div>
+
+                          <div className="input-group">
+                            <input
+                              id="reg_otpCode"
+                              name="otpCode"
+                              type="text"
+                              maxLength={6}
+                              className="form-control"
+                              placeholder="Enter 6-digit SMS code"
+                              value={otpState.inputCode || ""}
+                              onChange={(e) => setOtpState({ ...otpState, inputCode: e.target.value, error: "" })}
+                            />
+
+                            <button
+                              type="button"
+                              className="btn btn-success"
+                              onClick={handleVerifyOtp}
+                            >
+                              <i className="bi bi-check-circle-fill me-1"></i>
+                              Verify OTP
+                            </button>
+                          </div>
+
+                          {otpState.message && (
+                            <div className="alert alert-info mt-2 mb-0 py-2 fs-7" role="alert">
+                              <i className="bi bi-info-circle-fill me-1"></i>
+                              {otpState.message}
+                            </div>
+                          )}
+
+                          {otpState.error && (
+                            <div className="alert alert-danger mt-2 mb-0 py-2 fs-7" role="alert">
+                              <i className="bi bi-exclamation-triangle-fill me-1"></i>
+                              {otpState.error}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Date of Birth */}
 
                     <div className="col-md-6">
-                      <label className="form-label fw-semibold">
+                      <label htmlFor="reg_dob" className="form-label fw-semibold">
                         Date of Birth
                       </label>
 
                       <input
+                        id="reg_dob"
                         type="date"
+                        autoComplete="bday"
                         className="form-control"
                         name="dob"
                         value={formData.dob}
@@ -349,9 +571,10 @@ const Register = () => {
                     {/* Gender */}
 
                     <div className="col-md-6">
-                      <label className="form-label fw-semibold">Gender</label>
+                      <label htmlFor="reg_gender" className="form-label fw-semibold">Gender</label>
 
                       <select
+                        id="reg_gender"
                         className="form-select"
                         name="gender"
                         value={formData.gender}
@@ -371,9 +594,10 @@ const Register = () => {
                     {/* Address */}
 
                     <div className="col-12">
-                      <label className="form-label fw-semibold">Address</label>
+                      <label htmlFor="reg_address" className="form-label fw-semibold">Address</label>
 
                       <textarea
+                        id="reg_address"
                         className="form-control"
                         rows="3"
                         name="address"
@@ -391,11 +615,12 @@ const Register = () => {
                     {/* Emergency Contact */}
 
                     <div className="col-md-6">
-                      <label className="form-label fw-semibold">
+                      <label htmlFor="reg_emergencyContact" className="form-label fw-semibold">
                         Emergency Contact
                       </label>
 
                       <input
+                        id="reg_emergencyContact"
                         type="text"
                         className="form-control"
                         name="emergencyContact"
@@ -408,56 +633,7 @@ const Register = () => {
                     </div>
                   </div>
 
-                  {/* OTP Verification Section */}
 
-                  {otpState.isSent && !otpState.isVerified && (
-                    <div
-                      className="mt-4 p-4"
-                      style={{
-                        background: "#FFF7ED",
-                        border: "1px solid #FED7AA",
-                        borderRadius: "15px",
-                      }}
-                    >
-                      <h5
-                        className="fw-bold mb-3"
-                        style={{
-                          color: "var(--primary)",
-                        }}
-                      >
-                        Verify Mobile Number
-                      </h5>
-
-                      <div className="row align-items-end">
-                        <div className="col-md-8">
-                          <label className="form-label">Enter OTP</label>
-
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={otpState.code}
-                            onChange={(e) =>
-                              setOtpState({
-                                ...otpState,
-                                code: e.target.value,
-                              })
-                            }
-                            placeholder="Enter 6-digit OTP"
-                          />
-                        </div>
-
-                        <div className="col-md-4 d-grid">
-                          <button
-                            type="button"
-                            className="btn btn-primary"
-                            onClick={handleVerifyOtp}
-                          >
-                            Verify OTP
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                   {/* Driver Details */}
 
                   {formData.role === "driver" && (
@@ -482,11 +658,12 @@ const Register = () => {
                         {/* License Number */}
 
                         <div className="col-md-6">
-                          <label className="form-label fw-semibold text-secondary">
+                          <label htmlFor="reg_licenseNumber" className="form-label fw-semibold text-secondary">
                             Driving License Number
                           </label>
 
                           <input
+                            id="reg_licenseNumber"
                             type="text"
                             className="form-control"
                             name="licenseNumber"
@@ -518,14 +695,17 @@ const Register = () => {
                         {/* Upload License */}
 
                         <div className="col-md-8">
-                          <label className="form-label fw-semibold text-secondary">
-                            Upload Driving License
+                          <label htmlFor="reg_licensePdf" className="form-label fw-semibold text-secondary">
+                            Upload Driving License (PDF / Image)
                           </label>
 
                           <input
+                            id="reg_licensePdf"
+                            name="licensePdf"
                             type="file"
                             className="form-control"
                             accept="image/*,.pdf"
+                            onChange={handleLicensePdfChange}
                             required={formData.role === "driver"}
                           />
                         </div>
@@ -535,23 +715,37 @@ const Register = () => {
                         <div className="col-md-4 d-grid">
                           <label className="form-label">&nbsp;</label>
 
-                          <button type="button" className="btn btn-primary">
-                            <i className="bi bi-shield-check me-2"></i>
-                            Verify License
+                          <button
+                            type="button"
+                            className={`btn ${licenseStatus.verified ? "btn-success" : "btn-primary"}`}
+                            onClick={handleVerifyLicense}
+                          >
+                            <i className={`bi ${licenseStatus.verified ? "bi-check-circle-fill" : "bi-file-earmark-check-fill"} me-2`}></i>
+                            {licenseStatus.verified ? "Document Attached" : "Submit Document"}
                           </button>
                         </div>
                       </div>
 
                       {/* Verification Status */}
 
-                      <div
-                        className="alert alert-warning mt-4 mb-0"
-                        role="alert"
-                      >
-                        <i className="bi bi-info-circle-fill me-2"></i>
-                        License verification is required before becoming an
-                        active SmartRide Driver.
-                      </div>
+                      {licenseStatus.message ? (
+                        <div
+                          className={`alert ${licenseStatus.verified ? "alert-success" : "alert-danger"} mt-4 mb-0`}
+                          role="alert"
+                        >
+                          <i className={`bi ${licenseStatus.verified ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill"} me-2`}></i>
+                          {licenseStatus.message}
+                        </div>
+                      ) : (
+                        <div
+                          className="alert alert-warning mt-4 mb-0"
+                          role="alert"
+                        >
+                          <i className="bi bi-info-circle-fill me-2"></i>
+                          License verification is required before becoming an
+                          active SmartRide Driver.
+                        </div>
+                      )}
                     </div>
                   )}
 

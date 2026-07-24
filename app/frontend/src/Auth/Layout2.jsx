@@ -1,20 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { useRef } from "react";
-import { Collapse } from "bootstrap";
+
 export default function Layout() {
   const { user } = useSelector((state) => state.auth);
-  const navbarRef = useRef(null);
-  const closeNavbar = () => {
-    if (window.innerWidth < 992) {
-      const collapse = new Collapse(navbarCollapseRef.current, {
-        toggle: false,
-      });
+  const displayName = user?.username || user?.name || user?.phone || user?.email || "User";
+  const initial = displayName.charAt(0).toUpperCase();
+  const roleName = user?.roleName || (user?.role === 1 ? "Admin" : user?.role === 2 ? "Driver" : "Rider");
 
-      collapse.hide();
-    }
-  };
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const toggleNavbar = () => setIsNavOpen((prev) => !prev);
+  const closeNavbar = () => setIsNavOpen(false);
+
   return (
     <>
       {/* ================= Navbar ================= */}
@@ -29,6 +26,7 @@ export default function Layout() {
           <NavLink
             className="navbar-brand fw-bold"
             to="/"
+            onClick={closeNavbar}
             style={{
               color: "var(--primary)",
               fontSize: "1.8rem",
@@ -44,10 +42,9 @@ export default function Layout() {
           <button
             className="navbar-toggler btn-outline-primary"
             type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#navbarContent"
+            onClick={toggleNavbar}
             aria-controls="navbarContent"
-            aria-expanded="false"
+            aria-expanded={isNavOpen}
             aria-label="Toggle navigation"
           >
             <span className="navbar-toggler-icon"></span>
@@ -56,8 +53,7 @@ export default function Layout() {
           {/* Navbar Menu */}
 
           <div
-            ref={navbarRef}
-            className="collapse navbar-collapse justify-content-end"
+            className={`collapse navbar-collapse justify-content-end ${isNavOpen ? "show" : ""}`}
             id="navbarContent"
           >
             {user ? (
@@ -70,19 +66,19 @@ export default function Layout() {
                     color: "var(--primary)",
                   }}
                 >
-                  Welcome, {user.userid}
+                  Welcome, {displayName}
                 </span>
 
                 {/* Profile */}
 
                 <div className="profile">
                   <div className="profile-avatar">
-                    {user.userid?.charAt(0).toUpperCase()}
+                    {initial}
                   </div>
 
                   <div className="profile-info">
-                    <h6>{user.userid}</h6>
-                    <span>User</span>
+                    <h6>{displayName}</h6>
+                    <span>{roleName}</span>
                   </div>
                 </div>
 

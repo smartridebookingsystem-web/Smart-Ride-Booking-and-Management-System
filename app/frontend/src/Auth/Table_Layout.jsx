@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function CustomTable({
   columns,
@@ -6,6 +8,7 @@ export default function CustomTable({
   onEdit,
   onDelete,
   onView,
+  tableName = "SmartRide Data Report",
 }) {
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState({});
@@ -69,17 +72,88 @@ export default function CustomTable({
     currentPage * entries,
   );
 
+  /* ---------------- PDF Export Utility Functions ---------------- */
+
+  const generatePdfReport = (exportRows, title) => {
+    if (!exportRows || exportRows.length === 0) {
+      alert("No data available to export.");
+      return;
+    }
+
+    const doc = new jsPDF("landscape");
+    doc.setFontSize(16);
+    doc.setTextColor(37, 99, 235);
+    doc.text(title, 14, 15);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleString()} | Total Records: ${exportRows.length}`, 14, 22);
+
+    const tableHeaders = columns.map((col) => col.header);
+    const tableBody = exportRows.map((row, idx) =>
+      columns.map((col) => {
+        const val = row[col.field];
+        if (typeof val === "object" && val !== null && val.props) {
+          // Flatten JSX or badge elements to plain text if needed
+          return String(row.status || row[col.field] || "");
+        }
+        return val !== undefined && val !== null ? String(val) : "";
+      })
+    );
+
+    autoTable(doc, {
+      head: [["#", ...tableHeaders]],
+      body: tableBody.map((r, i) => [i + 1, ...r]),
+      startY: 28,
+      styles: { fontSize: 10, cellPadding: 3 },
+      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+
+    doc.save(`${title.toLowerCase().replace(/[^a-z0-9]/g, "_")}.pdf`);
+  };
+
+  const handleDownloadCurrentFilteredData = () => {
+    if (sortedData.length === 0) {
+      alert("No matching records found to download.");
+      return;
+    }
+
+    const userInput = prompt(
+      `How many records would you like to download? (Matching results: ${sortedData.length})`,
+      String(sortedData.length)
+    );
+
+    if (userInput === null) return; // User cancelled
+
+    const count = parseInt(userInput, 10);
+    if (isNaN(count) || count <= 0) {
+      alert("Please enter a valid positive number of records.");
+      return;
+    }
+
+    const recordsToExport = sortedData.slice(0, count);
+    generatePdfReport(recordsToExport, `${tableName} - Filtered View (${recordsToExport.length} Records)`);
+  };
+
+  const handleDownloadWholeData = () => {
+    if (data.length === 0) {
+      alert("No table data available to download.");
+      return;
+    }
+    generatePdfReport(data, `${tableName} - Complete Dataset (${data.length} Records)`);
+  };
+
   return (
     <div className="card shadow-sm">
       {/* Header */}
-      <div className="card-header">
-        <div className="row align-items-center">
-          <div className="col-md-6 d-flex align-items-center">
-            <span>Show</span>
-
+      <div className="card-header bg-white py-3">
+        <div className="row align-items-center g-3">
+          <div className="col-md-4 d-flex align-items-center">
+            <span className="me-2 text-secondary fw-semibold">Show</span>
             <select
-              className="form-select mx-2"
-              style={{ width: "100px" }}
+              className="form-select border-primary"
+              style={{ width: "90px" }}
               value={entries}
               onChange={(e) => {
                 setEntries(Number(e.target.value));
@@ -91,21 +165,41 @@ export default function CustomTable({
               <option value="50">50</option>
               <option value="100">100</option>
             </select>
-
-            <span>entries</span>
+            <span className="ms-2 text-secondary fw-semibold">entries</span>
           </div>
 
-          <div className="col-md-6">
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Global Search..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
-            />
+          <div className="col-md-8 d-flex flex-wrap justify-content-md-end gap-2 align-items-center">
+            {/* Download Filtered PDF Button */}
+            <button
+              className="btn btn-outline-success btn-sm px-3 fw-bold"
+              onClick={handleDownloadCurrentFilteredData}
+              title="Download filtered/searched records as PDF"
+            >
+              <i className="bi bi-funnel-fill me-1"></i> Download Filtered PDF
+            </button>
+
+            {/* Download Whole Data PDF Button */}
+            <button
+              className="btn btn-primary btn-sm px-3 fw-bold"
+              onClick={handleDownloadWholeData}
+              title="Download entire dataset as PDF"
+            >
+              <i className="bi bi-file-earmark-pdf-fill me-1"></i> Download Whole Data PDF
+            </button>
+
+            {/* Search Input */}
+            <div style={{ minWidth: "200px" }}>
+              <input
+                type="text"
+                className="form-control form-control-sm border-primary"
+                placeholder="Global Search..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -193,31 +287,34 @@ export default function CustomTable({
                     <td key={col.field}>{row[col.field]}</td>
                   ))}
 
-                  <td>
+                  <td className="text-nowrap">
                     {onView && (
                       <button
-                        className="btn btn-info btn-sm me-2"
+                        className="btn btn-outline-primary btn-sm px-2 py-1 me-1 shadow-sm"
+                        title="View Document & Details"
                         onClick={() => onView(row)}
                       >
-                        <i className="fa fa-eye"></i>
+                        <i className="bi bi-eye-fill fs-6"></i>
                       </button>
                     )}
 
                     {onEdit && (
                       <button
-                        className="btn btn-warning btn-sm me-2"
+                        className="btn btn-outline-warning text-dark btn-sm px-2 py-1 me-1 shadow-sm"
+                        title="Edit Verification Status"
                         onClick={() => onEdit(row)}
                       >
-                        <i className="fa fa-pencil"></i>
+                        <i className="bi bi-pencil-square fs-6"></i>
                       </button>
                     )}
 
                     {onDelete && (
                       <button
-                        className="btn btn-danger btn-sm"
+                        className="btn btn-outline-danger btn-sm px-2 py-1 shadow-sm"
+                        title="Delete Driver Record from Database"
                         onClick={() => onDelete(row)}
                       >
-                        <i className="fa fa-trash"></i>
+                        <i className="bi bi-trash-fill fs-6"></i>
                       </button>
                     )}
                   </td>
@@ -237,7 +334,7 @@ export default function CustomTable({
       {/* Footer */}
       <div className="card-footer">
         <div className="row align-items-center">
-          <div className="col-md-6">
+          <div className="col-md-6 text-light">
             Showing {currentData.length ? (currentPage - 1) * entries + 1 : 0}{" "}
             to {Math.min(currentPage * entries, sortedData.length)} of{" "}
             {sortedData.length} entries
@@ -259,9 +356,8 @@ export default function CustomTable({
               {[...Array(totalPages)].map((_, index) => (
                 <li
                   key={index}
-                  className={`page-item ${
-                    currentPage === index + 1 ? "active" : ""
-                  }`}
+                  className={`page-item ${currentPage === index + 1 ? "active" : ""
+                    }`}
                 >
                   <button
                     className="page-link"
@@ -273,11 +369,10 @@ export default function CustomTable({
               ))}
 
               <li
-                className={`page-item ${
-                  currentPage === totalPages || totalPages === 0
+                className={`page-item ${currentPage === totalPages || totalPages === 0
                     ? "disabled"
                     : ""
-                }`}
+                  }`}
               >
                 <button
                   className="page-link"
