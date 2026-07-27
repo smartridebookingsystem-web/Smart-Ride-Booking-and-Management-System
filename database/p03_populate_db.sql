@@ -30,11 +30,11 @@ UNLOCK TABLES;
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
 INSERT INTO `users` (`user_id`, `role_id`, `username`, `email`, `password`, `phone`, `dob`, `profile_image`, `gender`, `status`, `created_at`) VALUES
-(1, 1, 'gitanjali', 'gitanjali@srbms.com', 'admin123', '9876543201', '1990-01-01', 'default.jpg', 'female', 'active', '2026-07-02 22:18:06'),
-(2, 2, 'sulkshana', 'sulkshana@driver.com', 'driver123', '9876543202', '1992-05-15', 'default.jpg', 'female', 'active', '2026-07-02 22:18:06'),
-(3, 3, 'dhananjay', 'dhananjay@rider.com', 'rider123', '9876543203', '1995-08-20', 'default.jpg', 'male', 'active', '2026-07-02 22:18:06'),
-(4, 3, 'keshav', 'keshav@rider.com', 'rider123', '9876543204', '1998-12-10', 'default.jpg', 'male', 'active', '2026-07-02 22:18:06'),
-(5, 2, 'manish', 'manish@driver.com', 'driver123', '9876543205', '1991-03-25', 'default.jpg', 'male', 'active', '2026-07-02 22:18:06');
+(1, 1, 'gitanjali', 'gitanjali@srbms.com', '$2a$10$h8jjhVjvw6hl/C.BPWs.keQooYyySSY1olp56bxCGhjsoTG5WhiES', '9876543201', '1990-01-01', 'default.jpg', 'female', 'active', '2026-07-02 22:18:06'),
+(2, 2, 'sulkshana', 'sulkshana@driver.com', '$2a$10$ImVqKtBs8N9jHfhmSqr4mOhOG8vBorcwblBBb11Ap1ZTjn4HdXsZW', '9876543202', '1992-05-15', 'default.jpg', 'female', 'active', '2026-07-02 22:18:06'),
+(3, 3, 'dhananjay', 'dhananjay@rider.com', '$2a$10$dJ/ALunM9GBplxmPiFHuO.KzbXyU85OtDMuqGjCpUBEketz9EGa2C', '9876543203', '1995-08-20', 'default.jpg', 'male', 'active', '2026-07-02 22:18:06'),
+(4, 3, 'keshav', 'keshav@rider.com', '$2a$10$dJ/ALunM9GBplxmPiFHuO.KzbXyU85OtDMuqGjCpUBEketz9EGa2C', '9876543204', '1998-12-10', 'default.jpg', 'male', 'active', '2026-07-02 22:18:06'),
+(5, 2, 'manish', 'manish@driver.com', '$2a$10$ImVqKtBs8N9jHfhmSqr4mOhOG8vBorcwblBBb11Ap1ZTjn4HdXsZW', '9876543205', '1991-03-25', 'default.jpg', 'male', 'active', '2026-07-02 22:18:06');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 

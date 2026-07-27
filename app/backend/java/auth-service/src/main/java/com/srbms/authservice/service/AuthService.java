@@ -3,9 +3,9 @@ package com.srbms.authservice.service;
 import com.srbms.authservice.dto.JwtResponse;
 import com.srbms.authservice.dto.LoginRequest;
 import com.srbms.authservice.dto.RegisterRequest;
-import com.srbms.authservice.model.Driver;
-import com.srbms.authservice.model.Role;
-import com.srbms.authservice.model.User;
+import com.srbms.authservice.entity.Driver;
+import com.srbms.authservice.entity.Role;
+import com.srbms.authservice.entity.User;
 import com.srbms.authservice.repository.DriverRepository;
 import com.srbms.authservice.repository.RoleRepository;
 import com.srbms.authservice.repository.UserRepository;
@@ -34,15 +34,6 @@ public class AuthService {
 
     @Autowired
     private JwtUtil jwtUtil;
-
-    @org.springframework.beans.factory.annotation.Value("${didit.api.url}")
-    private String diditApiUrl;
-
-    @org.springframework.beans.factory.annotation.Value("${didit.api.key}")
-    private String diditApiKey;
-
-    @Autowired
-    private org.springframework.web.client.RestTemplate restTemplate;
 
     public JwtResponse login(LoginRequest loginRequest) {
         String identifier = loginRequest.getEmailOrUsername();
@@ -159,44 +150,5 @@ public class AuthService {
             "role", jwtUtil.extractRole(token),
             "username", jwtUtil.extractUsername(token)
         );
-    }
-
-    public Map<String, Object> verifyLicense(com.srbms.authservice.dto.LicenseVerificationRequest request) {
-        if (request.getLicenseNo() == null || request.getLicenseNo().trim().length() < 5) {
-            return Map.of("valid", false, "message", "License number must be at least 5 characters long.");
-        }
-
-        // We use the RestTemplate to call the actual Didit API here.
-        // For now, this is a simulated structure for the request.
-        try {
-            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-            headers.set("Authorization", "Bearer " + diditApiKey);
-            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
-            
-            // Construct request payload according to Didit docs
-            Map<String, String> payload = Map.of(
-                "documentNumber", request.getLicenseNo(),
-                "documentUrl", request.getLicensePdfUrl() != null ? request.getLicensePdfUrl() : ""
-            );
-            
-            org.springframework.http.HttpEntity<Map<String, String>> entity = new org.springframework.http.HttpEntity<>(payload, headers);
-            
-            // NOTE: Currently, we catch the RestClientException if the user hasn't put in a valid key or URL,
-            // and fallback to returning true so they can test their flow until they fix the key.
-            // When real keys are added, this exception block can be changed to return valid: false.
-            
-            org.springframework.http.ResponseEntity<Map> response = restTemplate.postForEntity(diditApiUrl, entity, Map.class);
-            
-            if (response.getStatusCode().is2xxSuccessful()) {
-                // Parse actual Didit response here to determine validity and expiration
-                return Map.of("valid", true, "message", "License verified successfully with Didit.");
-            } else {
-                return Map.of("valid", false, "message", "Didit verification failed: " + response.getStatusCode());
-            }
-        } catch (org.springframework.web.client.RestClientException e) {
-            System.err.println("Didit API call failed (probably due to missing/invalid API key). Simulating success for testing.");
-            // For now, return success so the frontend flow isn't blocked while the user creates their API key
-            return Map.of("valid", true, "message", "Driver license format verified successfully. (Simulated Didit Response)");
-        }
     }
 }

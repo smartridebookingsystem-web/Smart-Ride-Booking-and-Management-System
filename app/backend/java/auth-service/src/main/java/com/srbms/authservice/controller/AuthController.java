@@ -3,7 +3,9 @@ package com.srbms.authservice.controller;
 import com.srbms.authservice.dto.JwtResponse;
 import com.srbms.authservice.dto.LoginRequest;
 import com.srbms.authservice.dto.RegisterRequest;
-import com.srbms.authservice.model.User;
+import com.srbms.authservice.entity.User;
+import com.srbms.authservice.repository.DriverRepository;
+import com.srbms.authservice.repository.UserRepository;
 import com.srbms.authservice.service.AuthService;
 import com.srbms.authservice.service.OtpService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +23,12 @@ public class AuthController {
 
     @Autowired
     private OtpService otpService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private DriverRepository driverRepository;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
@@ -56,26 +64,6 @@ public class AuthController {
             return ResponseEntity.status(401).body(validationResult);
         }
     }
-
-    @PostMapping("/verify-license")
-    public ResponseEntity<?> verifyLicense(@RequestBody com.srbms.authservice.dto.LicenseVerificationRequest request) {
-        try {
-            Map<String, Object> verificationResult = authService.verifyLicense(request);
-            if ((Boolean) verificationResult.get("valid")) {
-                return ResponseEntity.ok(verificationResult);
-            } else {
-                return ResponseEntity.badRequest().body(verificationResult);
-            }
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @Autowired
-    private com.srbms.authservice.repository.UserRepository userRepository;
-
-    @Autowired
-    private com.srbms.authservice.repository.DriverRepository driverRepository;
 
     @GetMapping("/check-availability")
     public ResponseEntity<?> checkAvailability(
@@ -113,7 +101,7 @@ public class AuthController {
         ));
     }
 
-    // ── Fast2SMS / Twilio OTP Endpoints ───────────────────────────────────────────────
+    // ── Twilio OTP Endpoints ───────────────────────────────────────────────
 
     @PostMapping("/send-otp")
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
