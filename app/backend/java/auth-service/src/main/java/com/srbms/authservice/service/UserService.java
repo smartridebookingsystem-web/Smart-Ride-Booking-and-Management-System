@@ -1,8 +1,8 @@
 package com.srbms.authservice.service;
 
 import com.srbms.authservice.dto.UserProfileResponse;
-import com.srbms.authservice.model.Driver;
-import com.srbms.authservice.model.User;
+import com.srbms.authservice.entity.Driver;
+import com.srbms.authservice.entity.User;
 import com.srbms.authservice.repository.DriverRepository;
 import com.srbms.authservice.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;

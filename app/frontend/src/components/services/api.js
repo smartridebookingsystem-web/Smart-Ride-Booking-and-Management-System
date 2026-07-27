@@ -74,27 +74,13 @@ export const authApi = {
     return await uploadToFirebaseStorage(file, folderName);
   },
 
-  // Didit / Driver License Format & Document Verification Helper
+  // Driver License Format & Document Verification Helper (Manual Admin Verification)
   validateDriverLicense: async (licenseNo, licensePdfUrl) => {
-    console.log(`[Didit License Verifier] Validating license number: ${licenseNo} via Backend`);
-
-    const response = await fetch(`${API_BASE_URL}/api/auth/verify-license`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        licenseNo: licenseNo,
-        licensePdfUrl: licensePdfUrl,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return { valid: false, message: errorData.message || "License verification failed." };
+    console.log(`[License Verifier] Checking format for license: ${licenseNo}`);
+    if (!licenseNo || licenseNo.trim().length < 5) {
+      return { valid: false, message: "License number must be at least 5 characters long." };
     }
-
-    return await response.json();
+    return { valid: true, message: "Driver license document submitted for manual Admin verification." };
   },
 
   // OTP Verification via Fast2SMS (backend: /api/auth/send-otp)
