@@ -1,9 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
+import MapComponent from "../components/rider/MapComponent";
 import { Link } from "react-router-dom";
 
 export default function Home5() {
-  return (
+
+    const [pickup, setPickup] = useState(null);
+    const [drop, setDrop] = useState(null);
+    const [selecting, setSelecting] = useState("");
+    const [showMap, setShowMap] = useState(false);
+
+    return (
+   
     <>
+   
       {/* ================= HERO SECTION ================= */}
 
       <section
@@ -18,6 +27,7 @@ export default function Home5() {
           color: "#fff",
         }}
       >
+        
         <div className="container">
           <div className="row align-items-center gy-5">
             {/* Left Content */}
@@ -122,19 +132,27 @@ export default function Home5() {
                 </div>
 
                 <div className="card-body p-4">
+                 
                   <div className="mb-3">
                     <label className="form-label fw-semibold">
                       Pickup Location
                     </label>
 
-                    <input
+                   <input
                       type="text"
                       className="form-control"
-                      placeholder="Enter pickup location"
+                      placeholder="Click to choose Pickup"
+                      value={pickup ? `${pickup[0].toFixed(5)}, ${pickup[1].toFixed(5)}` : ""}
+                      readOnly
+                      onClick={() => {
+                        setSelecting("pickup");
+                        setShowMap(true);
+                      }}
                     />
                   </div>
 
                   <div className="mb-3">
+                   
                     <label className="form-label fw-semibold">
                       Destination
                     </label>
@@ -142,7 +160,13 @@ export default function Home5() {
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="Enter destination"
+                      placeholder="Click to choose Drop"
+                      value={drop ? `${drop[0].toFixed(5)}, ${drop[1].toFixed(5)}` : ""}
+                      readOnly
+                      onClick={() => {
+                        setSelecting("drop");
+                        setShowMap(true);
+                      }}
                     />
                   </div>
 
@@ -175,6 +199,7 @@ export default function Home5() {
                 </div>
               </div>
             </div>
+            
           </div>
         </div>
       </section>
@@ -530,6 +555,56 @@ export default function Home5() {
           </div>
         </div>
       </section>
+      {showMap && (
+    <div
+        style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+        }}
+    >
+        <div
+            style={{
+                width: "80%",
+                height: "80%",
+                background: "#fff",
+                borderRadius: "12px",
+                overflow: "hidden",
+                position: "relative",
+            }}
+        >
+            <button
+                onClick={() => setShowMap(false)}
+                style={{
+                    position: "absolute",
+                    right: 15,
+                    top: 15,
+                    zIndex: 1000,
+                }}
+                className="btn btn-danger"
+            >
+                ✕
+            </button>
+{/* ================= Map Pop-UP ================= */}
+            <MapComponent
+                pickup={pickup}
+                drop={drop}
+                setPickup={setPickup}
+                setDrop={setDrop}
+                selecting={selecting}
+                onClose={() => setShowMap(false)}
+              
+            />
+        </div>
+    </div>
+)}
     </>
   );
 }
