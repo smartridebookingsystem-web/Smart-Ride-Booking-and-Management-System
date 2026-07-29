@@ -67,6 +67,7 @@ function App() {
               }
             >
               <Route index element={<DriverHome />} />
+              <Route path="status" element={<ToggleStatus />} />
               <Route path="toggle-status" element={<ToggleStatus />} />
               <Route path="ride-requests" element={<RideRequests />} />
               <Route path="navigation" element={<Navigation />} />
