@@ -4,7 +4,8 @@ import { useSelector } from "react-redux";
 
 export default function Layout() {
   const { user } = useSelector((state) => state.auth);
-  const displayName = user?.username || user?.name || user?.phone || user?.email || "User";
+  const rawName = user?.name || user?.fullName || user?.username;
+  const displayName = (rawName && isNaN(rawName)) ? rawName : (user?.email && isNaN(user.email.split('@')[0])) ? user.email.split('@')[0] : "User";
   const initial = displayName.charAt(0).toUpperCase();
   const roleName = user?.roleName || (user?.role === 1 ? "Admin" : user?.role === 2 ? "Driver" : "Rider");
 
