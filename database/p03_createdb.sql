@@ -220,6 +220,32 @@ CREATE TABLE `vehicle_type` (
   UNIQUE KEY `type_name` (`type_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `complaint`
+--
+
+DROP TABLE IF EXISTS `complaint`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `complaint` (
+  `complaint_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `ride_id` int DEFAULT NULL,
+  `subject` varchar(150) NOT NULL,
+  `description` text NOT NULL,
+  `category` varchar(50) DEFAULT 'General',
+  `status` enum('Open','In Progress','Resolved','Closed') DEFAULT 'Open',
+  `resolution_notes` text DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`complaint_id`),
+  KEY `fk_complaint_user` (`user_id`),
+  KEY `fk_complaint_ride` (`ride_id`),
+  CONSTRAINT `fk_complaint_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
+  CONSTRAINT `fk_complaint_ride` FOREIGN KEY (`ride_id`) REFERENCES `ride` (`ride_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

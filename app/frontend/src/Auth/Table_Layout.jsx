@@ -147,10 +147,10 @@ export default function CustomTable({
   return (
     <div className="card shadow-sm">
       {/* Header */}
-      <div className="card-header bg-white py-3">
+      <div className="card-header border-secondary py-3" style={{ backgroundColor: "#1e293b", color: "#ffffff" }}>
         <div className="row align-items-center g-3">
           <div className="col-md-4 d-flex align-items-center">
-            <span className="me-2 text-secondary fw-semibold">Show</span>
+            <span className="me-2 text-white fw-bold">Show</span>
             <select
               className="form-select border-primary"
               style={{ width: "90px" }}
@@ -165,7 +165,7 @@ export default function CustomTable({
               <option value="50">50</option>
               <option value="100">100</option>
             </select>
-            <span className="ms-2 text-secondary fw-semibold">entries</span>
+            <span className="ms-2 text-white fw-bold">entries</span>
           </div>
 
           <div className="col-md-8 d-flex flex-wrap justify-content-md-end gap-2 align-items-center">

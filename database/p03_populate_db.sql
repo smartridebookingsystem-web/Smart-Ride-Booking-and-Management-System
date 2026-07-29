@@ -132,6 +132,18 @@ INSERT INTO `review` (`review_id`, `ride_id`, `rider_id`, `driver_id`, `rating`,
 /*!40000 ALTER TABLE `review` ENABLE KEYS */;
 UNLOCK TABLES;
 
+--
+-- Dumping data for table `complaint`
+--
+LOCK TABLES `complaint` WRITE;
+/*!40000 ALTER TABLE `complaint` DISABLE KEYS */;
+INSERT INTO `complaint` (`complaint_id`, `user_id`, `ride_id`, `subject`, `description`, `category`, `status`, `resolution_notes`, `created_at`) VALUES
+(1, 4, 1, 'Driver arrived late for pickup', 'The driver arrived 20 minutes past the scheduled time without prior notification.', 'Late Pickup', 'Open', NULL, '2026-07-25 10:15:00'),
+(2, 3, 2, 'Incorrect fare deducted', 'I was charged extra ₹50 for luggage which was supposed to be included.', 'Fare Dispute', 'In Progress', 'Support team is reviewing transaction details with payment provider.', '2026-07-26 14:30:00'),
+(3, 4, 3, 'Unpolite behavior by driver', 'Driver was talking loudly on phone while driving.', 'Driver Behavior', 'Resolved', 'Driver advised regarding customer service standards and issued a warning.', '2026-07-27 09:00:00');
+/*!40000 ALTER TABLE `complaint` ENABLE KEYS */;
+UNLOCK TABLES;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

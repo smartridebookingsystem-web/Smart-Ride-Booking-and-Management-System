@@ -1,4 +1,4 @@
-package com.srbms.authservice.model;
+package com.srbms.authservice.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;

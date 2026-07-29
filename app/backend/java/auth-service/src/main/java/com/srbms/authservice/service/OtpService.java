@@ -28,8 +28,11 @@ public class OtpService {
     @Value("${twilio.auth.token}")
     private String twilioAuthToken;
 
-    @Value("${twilio.phone.number}")
+    @Value("${twilio.phone.number:${twilio.from.number:}}")
     private String twilioPhoneNumber;
+
+    @Value("${otp.message.template:Smart Ride Booking System: Your verification code is %s. Do not share this OTP with anyone for your security valid for 5 minutes.}")
+    private String otpMessageTemplate;
 
     private final Map<String, OtpEntry> otpStore = new ConcurrentHashMap<>();
     private static final int OTP_TTL_SECONDS = 300;
@@ -48,7 +51,9 @@ public class OtpService {
                 sendTwilioSms(formattedPhone, otp);
             } catch (Exception e) {
                 System.err.println("[OtpService] Twilio error: " + e.getMessage());
-                throw new RuntimeException("Twilio SMS Error: " + e.getMessage());
+                // Still store OTP in memory for dev/test fallback if needed
+                otpStore.put(cleanPhone, new OtpEntry(otp, Instant.now().plusSeconds(OTP_TTL_SECONDS)));
+                throw new RuntimeException(e.getMessage());
             }
         } else {
             System.out.println("[OtpService] (Dev Mode) Generated OTP for " + formattedPhone + ": " + otp);
@@ -83,7 +88,7 @@ public class OtpService {
     }
 
     private boolean isTwilioConfigured() {
-        return twilioAccountSid != null && !twilioAccountSid.isBlank() && !twilioAccountSid.startsWith("YOUR_");
+        return twilioAccountSid != null && !twilioAccountSid.trim().isBlank() && !twilioAccountSid.trim().startsWith("YOUR_");
     }
 
     private String generateOtp() {
@@ -91,14 +96,22 @@ public class OtpService {
     }
 
     private void sendTwilioSms(String toPhone, String otp) throws Exception {
-        String message = "Your Smart Ride OTP code is: " + otp + ". Valid for 5 minutes. Do not share with anyone.";
-        String url = "https://api.twilio.com/2010-04-01/Accounts/" + twilioAccountSid + "/Messages.json";
+        String sid = twilioAccountSid.trim();
+        String token = twilioAuthToken.trim();
+        String fromPhone = twilioPhoneNumber.trim();
+
+        String template = (otpMessageTemplate != null && !otpMessageTemplate.isBlank()) 
+                ? otpMessageTemplate 
+                : "Smart Ride Booking System: Your verification code is %s. Do not share this OTP with anyone for your security valid for 5 minutes.";
+        
+        String message = String.format(template, otp);
+        String url = "https://api.twilio.com/2010-04-01/Accounts/" + sid + "/Messages.json";
 
         String formData = "To=" + URLEncoder.encode(toPhone, StandardCharsets.UTF_8)
-                + "&From=" + URLEncoder.encode(twilioPhoneNumber, StandardCharsets.UTF_8)
+                + "&From=" + URLEncoder.encode(fromPhone, StandardCharsets.UTF_8)
                 + "&Body=" + URLEncoder.encode(message, StandardCharsets.UTF_8);
 
-        String authHeader = "Basic " + Base64.getEncoder().encodeToString((twilioAccountSid + ":" + twilioAuthToken).getBytes(StandardCharsets.UTF_8));
+        String authHeader = "Basic " + Base64.getEncoder().encodeToString((sid + ":" + token).getBytes(StandardCharsets.UTF_8));
 
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
@@ -112,7 +125,10 @@ public class OtpService {
         System.out.println("[OtpService] Twilio Response [" + response.statusCode() + "]: " + response.body());
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new RuntimeException("Twilio returned HTTP " + response.statusCode() + ": " + response.body());
+            if (response.body() != null && response.body().contains("21608")) {
+                throw new RuntimeException("Twilio Trial Account Error (21608): Phone number " + toPhone + " is not verified in your Twilio Console. Please add and verify " + toPhone + " under Verified Caller IDs at https://console.twilio.com/us1/develop/phone-numbers/manage/verified to receive SMS in trial mode.");
+            }
+            throw new RuntimeException("Twilio SMS Delivery Failed (HTTP " + response.statusCode() + "): " + response.body());
         }
     }
 

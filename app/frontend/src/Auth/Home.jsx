@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import MapComponent from "../components/rider/MapComponent";
 import { Link } from "react-router-dom";
+import Sidebar from "../components/rider/Sidebar";
+import "../components/rider/Sidebar.css";
+
 
 export default function Home5() {
 
@@ -11,7 +14,14 @@ export default function Home5() {
 
     return (
    
-    <>
+    <div style={{display:"flex"}}>
+
+      <Sidebar/>
+
+      <div style={{
+      marginLeft:"260px",
+      width:"calc(100% - 260px)"
+      }}>
    
       {/* ================= HERO SECTION ================= */}
 
@@ -605,6 +615,8 @@ export default function Home5() {
         </div>
     </div>
 )}
-    </>
+    </div>
+
+</div>
   );
 }

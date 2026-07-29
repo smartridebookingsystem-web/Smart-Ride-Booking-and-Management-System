@@ -6,6 +6,7 @@ const RowDetailsModal = ({
   row,
   mode = "view",
   title = "Record Details",
+  activeTab = "",
   onSave,
   onClose,
 }) => {
@@ -16,7 +17,14 @@ const RowDetailsModal = ({
     if (row) {
       const cleanData = {};
       Object.entries(row).forEach(([k, v]) => {
-        if (k !== "docButton" && k !== "statusDisplay" && typeof v !== "function") {
+        if (
+          k !== "docButton" &&
+          k !== "statusDisplay" &&
+          k !== "statusBadge" &&
+          k !== "actionBtn" &&
+          typeof v !== "function" &&
+          (!v || typeof v !== "object" || !v.props)
+        ) {
           cleanData[k] = v;
         }
       });
@@ -89,18 +97,90 @@ const RowDetailsModal = ({
             {mode === "edit" ? (
               <div className="row g-3">
                 {Object.entries(formData).map(([key, value]) => {
-                  if (key === "id" || key === "userid") {
+                  if (key === "id" || key === "userid" || key === "userId") {
                     return (
                       <div className="col-md-6" key={key}>
-                        <label className="form-label fw-semibold text-secondary">{key.toUpperCase()}</label>
+                        <label className="form-label fw-bold text-white">{key.toUpperCase()}</label>
                         <input type="text" className="form-control bg-light" value={value || ""} disabled />
                       </div>
                     );
                   }
                   if (key === "status") {
+                    const isComplaint = activeTab === "complaints" || formData.complaintId;
+                    const isUser = activeTab === "users" || (!formData.licenseNo && !formData.rideId && !formData.paymentId && (formData.userId || formData.username));
+                    const isRide = activeTab === "rides" || formData.rideId;
+                    const isPayment = activeTab === "payments" || formData.paymentId;
+
+                    if (isComplaint) {
+                      return (
+                        <div className="col-md-6" key={key}>
+                          <label className="form-label fw-bold text-dark">COMPLAINT TICKET STATUS</label>
+                          <select
+                            className="form-select border-primary"
+                            value={value || "Open"}
+                            onChange={(e) => handleChange(key, e.target.value)}
+                          >
+                            <option value="Open">Open 🔴 (New Ticket)</option>
+                            <option value="In Progress">In Progress 🟡 (Under Investigation)</option>
+                            <option value="Resolved">Resolved 🟢 (Issue Solved)</option>
+                            <option value="Closed">Closed ⚪ (Archived)</option>
+                          </select>
+                        </div>
+                      );
+                    }
+
+                    if (isUser) {
+                      return (
+                        <div className="col-md-6" key={key}>
+                          <label className="form-label fw-bold text-dark">USER ACCOUNT STATUS</label>
+                          <select
+                            className="form-select border-primary"
+                            value={String(value || "").toLowerCase() === "active" ? "Active" : "Inactive"}
+                            onChange={(e) => handleChange(key, e.target.value)}
+                          >
+                            <option value="Active">Active 🟢 (Account Enabled)</option>
+                            <option value="Inactive">Inactive 🔴 (Account Disabled)</option>
+                          </select>
+                        </div>
+                      );
+                    }
+
+                    if (isRide) {
+                      return (
+                        <div className="col-md-6" key={key}>
+                          <label className="form-label fw-bold text-dark">RIDE STATUS</label>
+                          <select
+                            className="form-select border-primary"
+                            value={value || "In Progress"}
+                            onChange={(e) => handleChange(key, e.target.value)}
+                          >
+                            <option value="In Progress">In Progress 🔵</option>
+                            <option value="Completed">Completed 🟢</option>
+                            <option value="Cancelled">Cancelled 🔴</option>
+                          </select>
+                        </div>
+                      );
+                    }
+
+                    if (isPayment) {
+                      return (
+                        <div className="col-md-6" key={key}>
+                          <label className="form-label fw-bold text-dark">PAYMENT STATUS</label>
+                          <select
+                            className="form-select border-primary"
+                            value={value || "Paid"}
+                            onChange={(e) => handleChange(key, e.target.value)}
+                          >
+                            <option value="Paid">Paid 🟢</option>
+                            <option value="Pending">Pending 🟡</option>
+                          </select>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div className="col-md-6" key={key}>
-                        <label className="form-label fw-bold text-dark">STATUS</label>
+                        <label className="form-label fw-bold text-dark">VERIFICATION STATUS</label>
                         <select
                           className="form-select border-primary"
                           value={value || "Pending Verification"}
@@ -115,7 +195,7 @@ const RowDetailsModal = ({
                   }
                   return (
                     <div className="col-md-6" key={key}>
-                      <label className="form-label fw-semibold text-dark">{key.toUpperCase()}</label>
+                      <label className="form-label fw-bold text-white">{key.toUpperCase()}</label>
                       <input
                         type="text"
                         className="form-control"
@@ -162,14 +242,16 @@ const RowDetailsModal = ({
                             {key === "status" ? (
                               <span
                                 className={`badge ${
-                                  value === "Verified" || value === "verified" || value === "active"
+                                  String(value).toLowerCase() === "active" || String(value).toLowerCase() === "verified"
                                     ? "bg-success"
-                                    : value === "Rejected"
+                                    : String(value).toLowerCase() === "rejected" || String(value).toLowerCase() === "inactive" || String(value).toLowerCase() === "deactive"
                                     ? "bg-danger"
                                     : "bg-warning text-dark"
                                 } px-2 py-1 fs-6`}
                               >
-                                {value}
+                                {activeTab === "users" || (!formData.licenseNo && (formData.userId || formData.username))
+                                  ? (String(value).toLowerCase() === "active" ? "Active" : "Inactive")
+                                  : value}
                               </span>
                             ) : (
                               String(value || "N/A")
