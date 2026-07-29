@@ -52,6 +52,28 @@ services:
       eureka-server:
         condition: service_started
 
+  # Java Payment Service
+  payment-service:
+    build:
+      context: ./app/backend/java/payment-service
+      dockerfile: Dockerfile
+    container_name: srbms-payment-service
+    restart: always
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/p03_srbms?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=system
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - EUREKA_INSTANCE_LEASE_RENEWAL_INTERVAL_IN_SECONDS=5
+      - EUREKA_INSTANCE_LEASE_EXPIRATION_DURATION_IN_SECONDS=10
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+
   # Java API Gateway Service
   api-gateway:
     build:
@@ -68,6 +90,7 @@ services:
     depends_on:
       - eureka-server
       - auth-service
+      - payment-service
 
   # Admin Frontend (Port 5173)
   frontend-admin:

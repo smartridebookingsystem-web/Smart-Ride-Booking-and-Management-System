@@ -26,4 +26,7 @@ dist-ssr
 # Java build outputs
 target/
 **/target/
+.project
+.classpath
+.settings/
 

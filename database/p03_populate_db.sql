@@ -113,11 +113,22 @@ UNLOCK TABLES;
 --
 LOCK TABLES `payment` WRITE;
 /*!40000 ALTER TABLE `payment` DISABLE KEYS */;
-INSERT INTO `payment` (`payment_id`, `ride_id`, `total_fare`, `payment_mode`, `created_at`) VALUES
-(1, 1, 250.00, 'UPI', '2026-07-02 22:37:07'),
-(2, 2, 180.00, 'Cash', '2026-07-02 22:37:07'),
-(3, 3, 320.00, 'Credit Card', '2026-07-02 22:37:07');
+INSERT INTO `payment` (`payment_id`, `transaction_id`, `ride_id`, `user_id`, `total_fare`, `discount_amount`, `net_amount`, `payment_mode`, `payment_status`, `gateway_ref`, `created_at`) VALUES
+(1, 'TXN_SEED_001', 1, 4, 250.00, 0.00, 250.00, 'UPI', 'SUCCESS', 'UPI_GW_SEED01', '2026-07-02 22:37:07'),
+(2, 'TXN_SEED_002', 2, 3, 180.00, 0.00, 180.00, 'CASH', 'SUCCESS', 'CASH_GW_SEED02', '2026-07-02 22:37:07'),
+(3, 'TXN_SEED_003', 3, 4, 320.00, 0.00, 320.00, 'CARD', 'SUCCESS', 'CARD_GW_SEED03', '2026-07-02 22:37:07');
 /*!40000 ALTER TABLE `payment` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Dumping data for table `rider_wallet`
+--
+LOCK TABLES `rider_wallet` WRITE;
+/*!40000 ALTER TABLE `rider_wallet` DISABLE KEYS */;
+INSERT INTO `rider_wallet` (`wallet_id`, `user_id`, `balance`) VALUES
+(1, 3, 500.00),
+(2, 4, 1000.00);
+/*!40000 ALTER TABLE `rider_wallet` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
