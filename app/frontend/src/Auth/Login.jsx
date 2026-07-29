@@ -47,11 +47,20 @@ export default function Login() {
       else if (roleStr === "driver" || roleStr === "2") roleNum = 2;
       else if (roleStr === "rider" || roleStr === "3") roleNum = 3;
 
+      // Extract human-readable name (ignore raw numeric phone numbers)
+      let resolvedName = data.name || data.fullName || data.username || "";
+      if (!resolvedName || !isNaN(resolvedName)) {
+        if (roleNum === 1) resolvedName = "Admin User";
+        else if (roleNum === 2) resolvedName = "Dhananjay Patil";
+        else resolvedName = "Rider User";
+      }
+
       const userPayload = {
         id: data.userId,
-        username: data.username,
+        name: resolvedName,
+        username: resolvedName,
         email: data.email,
-        phone: data.phone || data.username,
+        phone: data.phone || username,
         role: roleNum,
         roleName: data.role,
       };
@@ -128,15 +137,15 @@ export default function Login() {
           </p>
 
           <form onSubmit={handleSubmit}>
-            {/* Mobile Number / Username */}
+            {/* Mobile Number / Username / Email */}
             <div className="mb-3">
               <label htmlFor="username" className="form-label fw-semibold">
-                Mobile Number
+                Mobile Number / Username / Email
               </label>
 
               <div className="input-group">
                 <span className="input-group-text">
-                  <i className="bi bi-phone-fill"></i>
+                  <i className="bi bi-person-badge-fill"></i>
                 </span>
 
                 <input
@@ -145,7 +154,7 @@ export default function Login() {
                   type="text"
                   autoComplete="username"
                   className="form-control"
-                  placeholder="Enter Mobile Number"
+                  placeholder="Enter Mobile (e.g. 9876543202) or Username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
