@@ -15,7 +15,6 @@
         <module>eureka-server</module>
         <module>auth-service</module>
         <module>api-gateway</module>
-        <module>admin-service</module>
         <module>payment-service</module>
     </modules>
 
