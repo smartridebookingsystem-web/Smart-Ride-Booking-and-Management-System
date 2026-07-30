@@ -4,7 +4,6 @@ import Home from "./Auth/Home";
 import Register from "./Auth/Register";
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Userdashboard from "./components/user/Userdashboard";
 import Admindashboard from "./components/admin/Admindashboard";
 import ProtectedRoute from "./components/ProtectedRoutes";
 import Driverdashboard from "./components/driver/Driverdashboard";
@@ -21,6 +20,17 @@ import Layout2 from "./Auth/Layout2";
 import ForgotPassword from "./Auth/ForgotPassword";
 import Contact from "./components/services/Contact";
 import About from "./components/services/About";
+
+// Rider Module Components
+import RiderDashboard from "./components/rider/RiderDashboard";
+import RiderHomeContent from "./components/rider/RiderHomeContent";
+import SearchRide from "./components/rider/SearchRide";
+import MyBookings from "./components/rider/MyBookings";
+import RiderWallet from "./components/rider/RiderWallet";
+import PaymentMethods from "./components/rider/PaymentMethods";
+import Notifications from "./components/rider/Notifications";
+import HelpSupport from "./components/rider/HelpSupport";
+import RiderSettings from "./components/rider/RiderSettings";
 
 function App() {
   return (
@@ -52,10 +62,19 @@ function App() {
               path="rider"
               element={
                 <ProtectedRoute role={3}>
-                  <Userdashboard />
+                  <RiderDashboard />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route index element={<RiderHomeContent />} />
+              <Route path="search-ride" element={<SearchRide />} />
+              <Route path="my-bookings" element={<MyBookings />} />
+              <Route path="wallet" element={<RiderWallet />} />
+              <Route path="payment-methods" element={<PaymentMethods />} />
+              <Route path="notifications" element={<Notifications />} />
+              <Route path="help-support" element={<HelpSupport />} />
+              <Route path="settings" element={<RiderSettings />} />
+            </Route>
 
             {/* Driver Routes (Role 2 = Driver) */}
             <Route
