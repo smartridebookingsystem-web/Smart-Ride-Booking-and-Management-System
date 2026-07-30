@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../services/api";
+import { ringtoneService } from "../../utils/ringtoneService";
 
 export default function RideRequests() {
   const navigate = useNavigate();
@@ -33,8 +34,34 @@ export default function RideRequests() {
   ]);
 
   const [actionMsg, setActionMsg] = useState("");
+  const [isMuted, setIsMuted] = useState(ringtoneService.getIsMuted());
+
+  // Automatically trigger ringtone when pending ride requests exist
+  useEffect(() => {
+    if (requests.length > 0 && !isMuted) {
+      ringtoneService.startIncomingRingtone();
+    } else {
+      ringtoneService.stopRingtone();
+    }
+
+    return () => {
+      ringtoneService.stopRingtone();
+    };
+  }, [requests.length, isMuted]);
+
+  const handleToggleMute = () => {
+    const muted = ringtoneService.toggleMute();
+    setIsMuted(muted);
+  };
+
+  const handleTestSound = () => {
+    ringtoneService.testRingtone();
+  };
 
   const handleAccept = async (req) => {
+    // Play pleasant accept request ringtone chime
+    ringtoneService.playAcceptSound();
+
     try {
       // Send accept request to backend REST API endpoint: POST /api/rides/accept
       await authApi.acceptRide(req.id, 1);
@@ -47,11 +74,12 @@ export default function RideRequests() {
 
     setTimeout(() => {
       navigate("/driver/navigation");
-    }, 1000);
+    }, 1200);
   };
 
-
   const handleReject = (reqId) => {
+    // Play decline sound notice
+    ringtoneService.playDeclineSound();
     setRequests((prev) => prev.filter((r) => r.id !== reqId));
     setActionMsg(`❌ Ride Request #${reqId} declined.`);
     setTimeout(() => setActionMsg(""), 3000);
@@ -59,20 +87,67 @@ export default function RideRequests() {
 
   return (
     <div>
-      {/* Title */}
-      <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+      {/* Title & Ringtone Audio Control Center */}
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center border-bottom pb-3 mb-4 gap-3">
         <div>
-          <h4 className="fw-bold text-dark mb-1">
-            <i className="bi bi-bell-fill text-primary me-2"></i>Incoming Ride Requests
+          <h4 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+            <i className="bi bi-bell-fill text-primary"></i>Incoming Ride Requests
+            {requests.length > 0 && (
+              <span className="badge bg-warning text-dark fs-6 rounded-pill px-2.5 py-1 ms-2">
+                <i className="bi bi-volume-up-fill me-1 animate-pulse"></i>Ringtone Active
+              </span>
+            )}
           </h4>
           <p className="text-secondary small mb-0">
-            Accept ride requests from nearby passengers to start trips.
+            Accept ride requests from nearby passengers to start trips. Audio ringtone alerts active.
           </p>
         </div>
 
-        <span className="badge bg-primary px-3 py-2 fs-6 rounded-pill">
-          {requests.length} Pending
-        </span>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          {/* Ringtone Sound Controls */}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary fw-semibold rounded-pill px-3 py-1.5 d-flex align-items-center gap-2"
+            onClick={handleTestSound}
+            title="Listen to sample ringtone sound"
+          >
+            <i className="bi bi-music-note-beaming text-primary"></i>
+            <span>Test Ringtone</span>
+          </button>
+
+          <button
+            type="button"
+            className={`btn btn-sm fw-bold rounded-pill px-3 py-1.5 d-flex align-items-center gap-2 ${
+              isMuted ? "btn-outline-danger" : "btn-success"
+            }`}
+            onClick={handleToggleMute}
+            title="Toggle Ringtone Audio"
+          >
+            <i className={`bi ${isMuted ? "bi-volume-mute-fill" : "bi-volume-up-fill"}`}></i>
+            <span>{isMuted ? "Ringtone Muted" : "Ringtone Sound On"}</span>
+          </button>
+
+          <span className="badge bg-primary px-3 py-2 fs-6 rounded-pill">
+            {requests.length} Pending
+          </span>
+        </div>
+      </div>
+
+      {/* Ringtone Notice Banner */}
+      <div className="alert bg-primary bg-opacity-10 border border-primary border-opacity-20 text-dark rounded-3 p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div className="d-flex align-items-center gap-2">
+          <i className="bi bi-speaker-fill text-primary fs-5"></i>
+          <span className="small fw-semibold">
+            <strong>Ringtone Alert System:</strong> Driver will hear a phone ringtone for incoming requests & an instant confirmation chime upon accepting.
+          </span>
+        </div>
+        <button
+          type="button"
+          className="btn btn-link btn-sm p-0 text-primary text-decoration-none fw-bold"
+          onClick={handleTestSound}
+        >
+          🔊 Click to test ringtone
+        </button>
       </div>
 
       {/* Action Notification Message */}
@@ -89,7 +164,7 @@ export default function RideRequests() {
           <i className="bi bi-inbox text-secondary" style={{ fontSize: "3.5rem" }}></i>
           <h5 className="fw-bold mt-3 text-dark">No Pending Ride Requests</h5>
           <p className="text-secondary small">
-            Stay online! New ride requests in your area will appear here automatically.
+            Stay online! New ride requests in your area will appear here automatically with ringtone audio notifications.
           </p>
         </div>
       ) : (
@@ -163,7 +238,7 @@ export default function RideRequests() {
                     </button>
                     <button
                       type="button"
-                      className="btn btn-primary fw-semibold px-4 py-2 rounded-3"
+                      className="btn btn-primary fw-semibold px-4 py-2 rounded-3 d-flex align-items-center gap-2"
                       onClick={() => handleAccept(req)}
                     >
                       <i className="bi bi-check-circle me-1"></i>Accept Ride
@@ -177,4 +252,4 @@ export default function RideRequests() {
       )}
     </div>
   );
-}
+}

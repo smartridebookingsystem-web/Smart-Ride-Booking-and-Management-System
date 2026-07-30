@@ -1,14 +1,49 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { authApi } from "../services/api";
+import { ringtoneService } from "../../utils/ringtoneService";
 
 export default function DriverHome() {
   const { isOnline, setIsOnline } = useOutletContext() || { isOnline: true, setIsOnline: () => {} };
 
-  // Ride State: "IDLE_REQUEST" (Show Request Card), "ACCEPTED" (Active Navigation), "COMPLETED"
   const [tripState, setTripState] = useState("IDLE_REQUEST");
   const [navStage, setNavStage] = useState("EN_ROUTE_PICKUP");
   const [notice, setNotice] = useState("");
+  const [countdown, setCountdown] = useState(60);
+  const [isMuted, setIsMuted] = useState(ringtoneService.getIsMuted());
+
+  // Trigger ringtone sound when incoming ride request is active
+  useEffect(() => {
+    if (tripState === "IDLE_REQUEST" && isOnline && !isMuted) {
+      ringtoneService.startIncomingRingtone();
+    } else {
+      ringtoneService.stopRingtone();
+    }
+
+    return () => {
+      ringtoneService.stopRingtone();
+    };
+  }, [tripState, isOnline, isMuted]);
+
+  useEffect(() => {
+    let timer;
+    if (tripState === "IDLE_REQUEST" && isOnline) {
+      timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            ringtoneService.stopRingtone();
+            setTripState("COMPLETED");
+            setNotice("⚠️ Ride request expired (1 min timeout).");
+            setTimeout(() => setNotice(""), 4000);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [tripState, isOnline]);
 
   const pendingRequest = {
     id: "REQ-201",
@@ -23,7 +58,19 @@ export default function DriverHome() {
     time: "Just now",
   };
 
+  const handleToggleMute = () => {
+    const muted = ringtoneService.toggleMute();
+    setIsMuted(muted);
+  };
+
+  const handleTestSound = () => {
+    ringtoneService.testRingtone();
+  };
+
   const handleAcceptRide = async () => {
+    // Play accept ride request confirmation chime
+    ringtoneService.playAcceptSound();
+
     try {
       await authApi.acceptRide(pendingRequest.id, 1);
     } catch (e) {
@@ -35,6 +82,7 @@ export default function DriverHome() {
   };
 
   const handleDeclineRide = () => {
+    ringtoneService.playDeclineSound();
     setTripState("COMPLETED");
     setNotice("❌ Ride request declined.");
     setTimeout(() => setNotice(""), 3000);
@@ -170,17 +218,62 @@ export default function DriverHome() {
             boxShadow: "0 10px 30px rgba(255, 107, 0, 0.15)",
           }}
         >
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <span className="badge px-3 py-2 rounded-pill fw-bold fs-6 d-flex align-items-center gap-2" style={{ background: "rgba(255, 107, 0, 0.2)", color: "#FF6B00", border: "1px solid rgba(255, 107, 0, 0.4)" }}>
-              <span className="spinner-grow spinner-grow-sm text-warning" role="status"></span>
-              NEW INCOMING RIDE REQUEST
-            </span>
-            <div className="text-end">
+          <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-3 gap-2">
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <span className="badge px-3 py-2 rounded-pill fw-bold fs-6 d-flex align-items-center gap-2" style={{ background: "rgba(255, 107, 0, 0.2)", color: "#FF6B00", border: "1px solid rgba(255, 107, 0, 0.4)" }}>
+                <span className="spinner-grow spinner-grow-sm text-warning" role="status"></span>
+                NEW INCOMING RIDE REQUEST
+              </span>
+
+              {/* Ringtone Sound Controls */}
+              <button
+                type="button"
+                className={`btn btn-sm fw-bold rounded-pill px-2.5 py-1 d-flex align-items-center gap-1.5 ${
+                  isMuted ? "btn-outline-danger" : "btn-warning text-dark"
+                }`}
+                onClick={handleToggleMute}
+                title="Toggle Ringtone Audio"
+              >
+                <i className={`bi ${isMuted ? "bi-volume-mute-fill" : "bi-volume-up-fill"}`}></i>
+                <span style={{ fontSize: "0.75rem" }}>{isMuted ? "Muted" : "Ringtone Playing 🔔"}</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-light text-light rounded-pill px-2.5 py-1 d-flex align-items-center gap-1"
+                onClick={handleTestSound}
+                title="Test Ringtone Chime"
+                style={{ fontSize: "0.75rem" }}
+              >
+                <i className="bi bi-music-note-beaming text-warning"></i>
+                <span>Test Sound</span>
+              </button>
+            </div>
+
+            <div className="text-sm-end">
               <span className="text-light opacity-75 small d-block">Estimated Fare</span>
               <strong className="text-warning fs-3">{pendingRequest.estimatedFare}</strong>
               <span className="badge bg-secondary bg-opacity-40 text-light ms-2 small">{pendingRequest.paymentMode}</span>
             </div>
           </div>
+
+          {/* Dynamic 1-Minute (60s) Acceptance Countdown Bar */}
+          <div className="mb-3 p-2.5 rounded-3 bg-black bg-opacity-30 border border-warning border-opacity-20">
+            <div className="d-flex justify-content-between align-items-center mb-1">
+              <small className="text-warning fw-bold">
+                <i className="bi bi-stopwatch-fill me-1"></i>Acceptance Window: <span className="fs-6 text-white">{countdown}s</span>
+              </small>
+              <small className="text-light opacity-75">Auto-expires if unaccepted</small>
+            </div>
+            <div className="progress" style={{ height: "6px", backgroundColor: "rgba(255,255,255,0.1)" }}>
+              <div
+                className={`progress-bar progress-bar-striped progress-bar-animated ${countdown <= 15 ? "bg-danger" : "bg-warning"}`}
+                style={{ width: `${(countdown / 60) * 100}%`, transition: "width 1s linear" }}
+              ></div>
+            </div>
+          </div>
+
+
 
           <div className="row align-items-center gy-3 mb-4">
             <div className="col-md-7">

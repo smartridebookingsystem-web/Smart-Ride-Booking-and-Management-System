@@ -7,7 +7,7 @@ export default function Driverdashboard() {
   const rawName = user?.name || user?.fullName || user?.username;
   const driverName = (rawName && isNaN(rawName)) ? rawName : "Dhananjay Patil";
   const [isOnline, setIsOnline] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const menuItems = [
     { path: "/driver", label: "Live Requests & Map", icon: "bi-house-door-fill", color: "text-warning", end: true, badge: "LIVE" },
