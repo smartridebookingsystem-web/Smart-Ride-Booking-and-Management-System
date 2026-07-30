@@ -39,7 +39,7 @@ docker compose ps
 
 ---
 
-## 🌐 Application URLs & Endpoints
+## 🌐 Step 4: Application URLs & Endpoints
 
 | Component | Role & Functionality | Live Browser URL |
 | :--- | :--- | :--- |
@@ -52,12 +52,12 @@ docker compose ps
 
 ---
 
-## ⚡ Hot Reload (HMR) for Frontend Development
+## ⚡ Step 5: Hot Reload (HMR) for Frontend Development
 - Any changes saved in VS Code for React files (`.jsx`, `.js`, `.css`) will **automatically update live in your browser** without rerunning Docker commands!
 
 ---
 
-## 🛠️ Useful Log & Maintenance Commands
+## 🛠️ Step 6: Useful Log & Maintenance Commands
 
 ### View Logs of Auth Service:
 ```powershell
@@ -76,8 +76,52 @@ docker compose restart auth-service
 
 ---
 
-## 🛑 How to Stop the System
+## 🛑 Step 7: How to Stop the System
 To cleanly shut down and stop all running containers:
 ```powershell
 docker compose down
+```
+
+---
+
+## 🔄 Step 8: Git Synchronization & Code Pushing Workflow
+
+### 📥 8.1 Sync Local Main, Feature Branch & Origin with Remote Main
+Keep your local `main`, feature branch (e.g. `Keshav_Zamre`), and remote `origin` feature branch fully updated with `origin/main`:
+
+```powershell
+# 1. Fetch latest updates from remote repository
+git fetch --all
+
+# 2. Update local main branch
+git checkout main
+git pull origin main
+
+# 3. Switch back to your feature branch
+git checkout <your-branch-name>
+
+# 4. Merge updated main into your local feature branch
+git merge main
+
+# 5. Push synchronized changes to your origin feature branch
+git push origin <your-branch-name>
+```
+
+---
+
+### 📤 8.2 Push Local Changes to Remote Origin Branch
+When you make new code changes and want to commit & push them to your feature branch on GitHub:
+
+```powershell
+# 1. Check modified/untracked files
+git status
+
+# 2. Stage all changed files
+git add .
+
+# 3. Commit changes with a descriptive message
+git commit -m "your commit message"
+
+# 4. Push commits to your remote origin branch
+git push origin <your-branch-name>
 ```
