@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useSelector } from "react-redux";
 
@@ -8,6 +8,14 @@ export default function Driverdashboard() {
   const driverName = (rawName && isNaN(rawName)) ? rawName : "Dhananjay Patil";
   const [isOnline, setIsOnline] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const menuItems = [
     { path: "/driver", label: "Live Requests & Map", icon: "bi-house-door-fill", color: "text-warning", end: true, badge: "LIVE" },
@@ -54,11 +62,7 @@ export default function Driverdashboard() {
                   boxShadow: "0 8px 24px rgba(255, 107, 0, 0.4)",
                 }}
               >
-                <img
-                  src="/driver_avatar.png"
-                  alt="Driver Profile"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
+                <i className="bi bi-person-fill fs-2 text-warning"></i>
                 <span
                   className={`position-absolute bottom-0 end-0 p-1.5 rounded-circle border border-2 border-dark ${
                     isOnline ? "bg-success" : "bg-danger"
@@ -85,18 +89,25 @@ export default function Driverdashboard() {
               </div>
             </div>
 
-            {/* Right: Revenue Stats & Glowing Duty Status Toggle */}
+            {/* Right: Revenue Stats, Clock & Glowing Duty Status Toggle */}
             <div className="d-flex align-items-center gap-3 ms-lg-auto flex-wrap">
-              {/* Today Revenue Pill */}
+              {/* Live Digital Clock & Today Revenue Pill */}
               <div className="d-none d-sm-flex align-items-center gap-3 bg-white bg-opacity-10 p-2.5 px-3 rounded-4 border border-white border-opacity-10">
                 <div className="text-center">
+                  <div className="text-warning fw-bold small">
+                    <i className="bi bi-clock-history me-1"></i>{currentTime}
+                  </div>
+                  <div className="text-light opacity-75" style={{ fontSize: "0.68rem" }}>IST Time</div>
+                </div>
+                <div className="border-end border-white border-opacity-20" style={{ height: "24px" }}></div>
+                <div className="text-center">
                   <div className="text-warning fw-bold fs-6">₹1,250</div>
-                  <div className="text-light opacity-75" style={{ fontSize: "0.7rem" }}>Today's Earnings</div>
+                  <div className="text-light opacity-75" style={{ fontSize: "0.68rem" }}>Today's Earnings</div>
                 </div>
                 <div className="border-end border-white border-opacity-20" style={{ height: "24px" }}></div>
                 <div className="text-center">
                   <div className="text-success fw-bold fs-6">8</div>
-                  <div className="text-light opacity-75" style={{ fontSize: "0.7rem" }}>Trips Completed</div>
+                  <div className="text-light opacity-75" style={{ fontSize: "0.68rem" }}>Trips Done</div>
                 </div>
               </div>
 

@@ -11,6 +11,8 @@ export default function DriverHome() {
   const [notice, setNotice] = useState("");
   const [countdown, setCountdown] = useState(60);
   const [isMuted, setIsMuted] = useState(ringtoneService.getIsMuted());
+  const [showFareBreakdown, setShowFareBreakdown] = useState(false);
+  const [tripSearch, setTripSearch] = useState("");
 
   // Trigger ringtone sound when incoming ride request is active
   useEffect(() => {
@@ -176,7 +178,7 @@ export default function DriverHome() {
       <div
         className="card border-0 shadow-lg rounded-4 overflow-hidden position-relative mb-1 text-white"
         style={{
-          background: "linear-gradient(90deg, #0F172A 0%, rgba(15,23,42,0.85) 60%, rgba(15,23,42,0.4) 100%), url('/driver_hero_banner.png') center/cover no-repeat",
+          background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
           minHeight: "190px",
           border: "1px solid rgba(255, 107, 0, 0.3)",
         }}
@@ -311,11 +313,51 @@ export default function DriverHome() {
               <span className="badge bg-white bg-opacity-10 text-white border border-white border-opacity-20 px-3.5 py-2 fs-6 rounded-3">
                 <i className="bi bi-signpost-2 text-warning me-1.5"></i>Distance: {pendingRequest.distance}
               </span>
-              <span className="badge bg-white bg-opacity-10 text-white border border-white border-opacity-20 px-3.5 py-2 fs-6 rounded-3">
-                <i className="bi bi-telephone text-info me-1.5"></i>{pendingRequest.phone}
-              </span>
+              <div className="d-flex align-items-center gap-2 flex-wrap justify-content-md-end">
+                <a href={`tel:${pendingRequest.phone}`} className="btn btn-sm btn-outline-info rounded-pill px-3 py-1.5 fw-bold text-decoration-none">
+                  <i className="bi bi-telephone-fill me-1"></i>Call Rider
+                </a>
+                <a href={`sms:${pendingRequest.phone}`} className="btn btn-sm btn-outline-light rounded-pill px-3 py-1.5 fw-bold text-decoration-none">
+                  <i className="bi bi-chat-text-fill me-1"></i>SMS
+                </a>
+              </div>
+              <button
+                type="button"
+                className="btn btn-link text-warning p-0 text-decoration-none small fw-bold mt-1"
+                onClick={() => setShowFareBreakdown(!showFareBreakdown)}
+              >
+                <i className={`bi ${showFareBreakdown ? "bi-chevron-up" : "bi-chevron-down"} me-1`}></i>
+                {showFareBreakdown ? "Hide Fare Breakdown" : "View Net Fare Breakdown"}
+              </button>
             </div>
           </div>
+
+          {/* Itemized Fare Breakdown Accordion */}
+          {showFareBreakdown && (
+            <div className="mb-3 p-3 rounded-3 bg-black bg-opacity-40 border border-warning border-opacity-30">
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <small className="text-light opacity-75">Base Fare</small>
+                <small className="text-white font-mono fw-bold">₹50.00</small>
+              </div>
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <small className="text-light opacity-75">Distance Fare (4.5 km @ ₹20/km)</small>
+                <small className="text-white font-mono fw-bold">₹90.00</small>
+              </div>
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <small className="text-success fw-bold">Peak Hour Surge (+15%)</small>
+                <small className="text-success font-mono fw-bold">+₹20.00</small>
+              </div>
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <small className="text-light opacity-75">SmartRide Platform Fee</small>
+                <small className="text-danger font-mono fw-bold">-₹15.00</small>
+              </div>
+              <hr className="border-secondary border-opacity-40 my-2" />
+              <div className="d-flex justify-content-between align-items-center">
+                <strong className="text-warning">Net Driver Earnings</strong>
+                <strong className="text-warning font-mono fs-5">₹145.00</strong>
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="d-flex gap-3 pt-3 border-top border-white border-opacity-10">
@@ -610,12 +652,9 @@ export default function DriverHome() {
                 <small className="text-warning fw-bold d-block">15 / 20 Trips Completed (75%)</small>
               </div>
               <div className="col-sm-5 text-center mt-3 mt-sm-0">
-                <img
-                  src="/driver_rewards.png"
-                  alt="Driver Rewards Tier"
-                  className="img-fluid rounded-4 shadow-lg border border-warning border-opacity-30"
-                  style={{ maxHeight: "135px", objectFit: "cover" }}
-                />
+                <div className="rounded-4 p-3 bg-warning bg-opacity-15 text-warning d-flex align-items-center justify-content-center border border-warning border-opacity-30" style={{ width: "100px", height: "100px", margin: "0 auto" }}>
+                  <i className="bi bi-trophy-fill fs-1 text-warning"></i>
+                </div>
               </div>
             </div>
           </div>
@@ -630,12 +669,9 @@ export default function DriverHome() {
             }}
           >
             <div className="d-flex align-items-center gap-3">
-              <img
-                src="/driver_avatar.png"
-                alt="Driver Avatar"
-                className="rounded-circle shadow-lg border border-2 border-warning"
-                style={{ width: "64px", height: "64px", objectFit: "cover" }}
-              />
+              <div className="rounded-circle bg-warning bg-opacity-20 text-warning d-flex justify-content-center align-items-center border border-2 border-warning" style={{ width: "64px", height: "64px" }}>
+                <i className="bi bi-person-fill fs-2"></i>
+              </div>
               <div>
                 <h5 className="fw-bold text-white mb-0">Dhananjay Patil</h5>
                 <small className="text-warning"><i className="bi bi-star-fill me-1"></i>4.95 Rating (124 Reviews)</small>
@@ -673,13 +709,39 @@ export default function DriverHome() {
           border: "1px solid rgba(255, 255, 255, 0.1)",
         }}
       >
-        <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-white border-opacity-10">
+        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3 pb-3 border-bottom border-white border-opacity-10">
           <h5 className="fw-bold mb-0 text-white">
             <i className="bi bi-clock-history me-2 text-warning"></i>Recent Completed Trips
           </h5>
-          <Link to="/driver/earnings" className="btn btn-outline-warning btn-sm rounded-pill px-3">
-            View Earnings Wallet <i className="bi bi-arrow-right me-1"></i>
-          </Link>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <div className="input-group input-group-sm" style={{ width: "250px" }}>
+              <span
+                className="input-group-text border-end-0 rounded-start-pill text-warning px-3"
+                style={{
+                  backgroundColor: "rgba(30, 41, 59, 0.85)",
+                  borderColor: "rgba(255, 107, 0, 0.45)",
+                }}
+              >
+                <i className="bi bi-search text-warning"></i>
+              </span>
+              <input
+                type="text"
+                className="form-control border-start-0 rounded-end-pill text-white small px-2"
+                placeholder="Search fare (₹250), rider, location..."
+                value={tripSearch}
+                onChange={(e) => setTripSearch(e.target.value)}
+                style={{
+                  backgroundColor: "rgba(30, 41, 59, 0.85)",
+                  borderColor: "rgba(255, 107, 0, 0.45)",
+                  color: "#FFFFFF",
+                  boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+                }}
+              />
+            </div>
+            <Link to="/driver/earnings" className="btn btn-outline-warning btn-sm rounded-pill px-3">
+              View Wallet <i className="bi bi-arrow-right me-1"></i>
+            </Link>
+          </div>
         </div>
 
         <div className="table-responsive">
@@ -694,22 +756,52 @@ export default function DriverHome() {
               </tr>
             </thead>
             <tbody>
-              {recentRides.map((ride) => (
-                <tr key={ride.id} className="border-bottom border-white border-opacity-10">
-                  <td className="fw-bold text-white">{ride.rider}</td>
-                  <td>
-                    <small className="d-block text-white fw-semibold">{ride.pickup}</small>
-                    <small className="text-light opacity-75">{ride.drop}</small>
-                  </td>
-                  <td className="fw-bold text-warning fs-6">{ride.fare}</td>
-                  <td><span className="badge bg-info bg-opacity-20 text-info px-2.5 py-1 rounded-pill">{ride.payment}</span></td>
-                  <td>
-                    <span className="badge bg-success px-2.5 py-1 rounded-pill">
-                      {ride.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {recentRides
+                .filter(
+                  (ride) =>
+                    ride.rider.toLowerCase().includes(tripSearch.toLowerCase()) ||
+                    ride.fare.toLowerCase().includes(tripSearch.toLowerCase()) ||
+                    ride.payment.toLowerCase().includes(tripSearch.toLowerCase()) ||
+                    ride.pickup.toLowerCase().includes(tripSearch.toLowerCase()) ||
+                    ride.drop.toLowerCase().includes(tripSearch.toLowerCase())
+                )
+                .map((ride) => (
+                  <tr key={ride.id} className="border-bottom border-white border-opacity-10">
+                    <td className="fw-bold text-white">{ride.rider}</td>
+                    <td>
+                      <small className="d-block text-white fw-semibold">{ride.pickup}</small>
+                      <small className="text-light opacity-75">{ride.drop}</small>
+                    </td>
+                    <td className="fw-bold text-warning fs-6">{ride.fare}</td>
+                    <td>
+                      <span
+                        className={`badge px-3 py-1.5 rounded-pill fw-bold shadow-sm ${
+                          ride.payment === "UPI"
+                            ? "bg-warning text-dark"
+                            : ride.payment === "Cash"
+                            ? "bg-success text-white"
+                            : "bg-info text-dark"
+                        }`}
+                      >
+                        <i
+                          className={`bi me-1 ${
+                            ride.payment === "UPI"
+                              ? "bi-qr-code-scan"
+                              : ride.payment === "Cash"
+                              ? "bi-cash-stack"
+                              : "bi-credit-card-fill"
+                          }`}
+                        ></i>
+                        {ride.payment}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="badge bg-success px-2.5 py-1 rounded-pill">
+                        {ride.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
