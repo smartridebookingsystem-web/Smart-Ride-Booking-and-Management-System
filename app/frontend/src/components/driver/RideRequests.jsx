@@ -1,37 +1,56 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { authApi } from "../services/api";
+import { authApi, rideApi } from "../services/api";
 import { ringtoneService } from "../../utils/ringtoneService";
 
 export default function RideRequests() {
   const navigate = useNavigate();
 
-  const [requests, setRequests] = useState([
-    {
-      id: "REQ-201",
-      riderName: "Rahul Sharma",
-      phone: "+91 98765 43210",
-      pickup: "Sangli Railway Station",
-      destination: "Vishrambag, Sangli",
-      distance: "4.5 km",
-      estimatedFare: "₹160",
-      paymentMode: "UPI",
-      vehicleType: "Sedan",
-      time: "2 mins ago",
-    },
-    {
-      id: "REQ-202",
-      riderName: "Priya Patil",
-      phone: "+91 98765 43211",
-      pickup: "Market Yard Gate 2",
-      destination: "Government Engineering College",
-      distance: "7.2 km",
-      estimatedFare: "₹240",
-      paymentMode: "Cash",
-      vehicleType: "SUV",
-      time: "Just now",
-    },
-  ]);
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        const rides = await rideApi.getAllRides();
+        if (Array.isArray(rides) && rides.length > 0) {
+          const pending = rides.map((r, idx) => ({
+            id: `REQ-${r.rideId || r.id}`,
+            riderName: r.riderName || r.rider || `Rider #${r.userId || (4 + idx)}`,
+            phone: "+91 98765 43210",
+            pickup: r.source || "Sangli Railway Station",
+            destination: r.destination || "Vishrambag, Sangli",
+            distance: "4.5 km",
+            estimatedFare: `₹${r.fare || 160}`,
+            paymentMode: r.paymentMode || "UPI",
+            vehicleType: "Sedan",
+            time: "Just now",
+          }));
+          setRequests(pending);
+        } else {
+          setRequests([
+            {
+              id: "REQ-201",
+              riderName: "Rahul Sharma",
+              phone: "+91 98765 43210",
+              pickup: "Sangli Railway Station",
+              destination: "Vishrambag, Sangli",
+              distance: "4.5 km",
+              estimatedFare: "₹160",
+              paymentMode: "UPI",
+              vehicleType: "Sedan",
+              time: "2 mins ago",
+            }
+          ]);
+        }
+      } catch (err) {
+        console.warn("Backend ride request sync:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRequests();
+  }, []);
 
   const [actionMsg, setActionMsg] = useState("");
   const [isMuted, setIsMuted] = useState(ringtoneService.getIsMuted());

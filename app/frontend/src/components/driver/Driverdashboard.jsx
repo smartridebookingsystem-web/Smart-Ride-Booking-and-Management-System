@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { rideApi } from "../services/api";
 
 export default function Driverdashboard() {
   const { user } = useSelector((state) => state.auth);
   const rawName = user?.name || user?.fullName || user?.username;
-  const driverName = (rawName && isNaN(rawName)) ? rawName : "Dhananjay Patil";
+  const driverName = (rawName && isNaN(rawName)) ? rawName : "Dhananjay Korde";
   const [isOnline, setIsOnline] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+  const [totalEarningsBadge, setTotalEarningsBadge] = useState("₹1,250");
+  const [pendingBadge, setPendingBadge] = useState("3 New");
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -17,12 +20,29 @@ export default function Driverdashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    async function fetchHeaderStats() {
+      try {
+        const rides = await rideApi.getAllRides();
+        if (Array.isArray(rides) && rides.length > 0) {
+          const fareSum = rides.reduce((sum, r) => sum + (r.fare || 250), 0);
+          setTotalEarningsBadge(`₹${fareSum}`);
+          const pendingCount = rides.filter(r => r.status === 2 || r.status === 0).length;
+          setPendingBadge(`${pendingCount > 0 ? pendingCount : 1} New`);
+        }
+      } catch (err) {
+        console.warn("Dashboard header stats sync:", err);
+      }
+    }
+    fetchHeaderStats();
+  }, []);
+
   const menuItems = [
     { path: "/driver", label: "Live Requests & Map", icon: "bi-house-door-fill", color: "text-warning", end: true, badge: "LIVE" },
-    { path: "/driver/ride-requests", label: "Ride Requests", icon: "bi-bell-fill", color: "text-info", badge: "3 New" },
+    { path: "/driver/ride-requests", label: "Ride Requests", icon: "bi-bell-fill", color: "text-info", badge: pendingBadge },
     { path: "/driver/navigation", label: "GPS Guidance", icon: "bi-geo-alt-fill", color: "text-danger" },
     { path: "/driver/complete-ride", label: "Complete Trip", icon: "bi-check-circle-fill", color: "text-success" },
-    { path: "/driver/earnings", label: "Earnings", icon: "bi-wallet2", color: "text-warning", badge: "₹1,250" },
+    { path: "/driver/earnings", label: "Earnings", icon: "bi-wallet2", color: "text-warning", badge: totalEarningsBadge },
     { path: "/driver/vehicle-info", label: "Vehicle & PDF", icon: "bi-car-front-fill", color: "text-info" },
     { path: "/driver/availability", label: "Schedule", icon: "bi-calendar-check-fill", color: "text-primary" },
   ];

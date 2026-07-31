@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { authApi } from "../services/api";
+import { authApi, rideApi } from "../services/api";
 
 export default function CompleteRide() {
   const navigate = useNavigate();
@@ -9,7 +9,7 @@ export default function CompleteRide() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
-  const rideData = {
+  const [rideData, setRideData] = useState({
     id: "RIDE-1093",
     riderName: "Rahul Sharma",
     pickup: "Sangli Railway Station",
@@ -17,17 +17,43 @@ export default function CompleteRide() {
     distance: "4.5 km",
     totalFare: 160.0,
     paymentMode: "UPI",
-    driverShare: 128.0, // 80% driver share
-    platformFee: 32.0,  // 20% platform fee
-  };
+    driverShare: 128.0,
+    platformFee: 32.0,
+  });
+
+  useEffect(() => {
+    async function loadCurrentRide() {
+      try {
+        const rides = await rideApi.getAllRides();
+        if (Array.isArray(rides) && rides.length > 0) {
+          const latest = rides[rides.length - 1];
+          const fare = parseFloat(latest.fare || 160.0);
+          setRideData({
+            id: `RIDE-${latest.rideId || latest.id || 1093}`,
+            riderName: latest.riderName || latest.rider || `Rider #${latest.userId || 4}`,
+            pickup: latest.source || "Sangli Railway Station",
+            destination: latest.destination || "Vishrambag Main Road, Sangli",
+            distance: "4.5 km",
+            totalFare: fare,
+            paymentMode: latest.paymentMode || "UPI",
+            driverShare: fare * 0.8,
+            platformFee: fare * 0.2,
+          });
+        }
+      } catch (err) {
+        console.warn("Backend ride sync:", err);
+      }
+    }
+    loadCurrentRide();
+  }, []);
 
   const handleFinishRide = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      // Send completed ride & payment details to backend REST API: POST /api/rides/complete
-      await authApi.completeRide(1093, rideData.totalFare, rideData.paymentMode);
+      const rideIdNum = parseInt(rideData.id.replace("RIDE-", "")) || 1;
+      await rideApi.completeTrip(rideIdNum);
     } catch (err) {
       console.warn("Backend sync notice:", err);
     }

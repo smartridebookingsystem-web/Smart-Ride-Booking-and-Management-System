@@ -178,6 +178,33 @@ export const authApi = {
       fileUrl: `default.jpg`,
     };
   },
+
+  getDriverAvailability: async (driverId = 1) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/drivers/${driverId}/availability`);
+      if (response.ok) return await response.json();
+    } catch (e) {
+      console.warn("Backend availability endpoint notice:", e);
+    }
+    const saved = localStorage.getItem(`driver_availability_${driverId}`);
+    return saved ? JSON.parse(saved) : null;
+  },
+
+  saveDriverAvailability: async (driverId = 1, availability) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/drivers/${driverId}/availability`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(availability),
+      });
+      if (response.ok) return await response.json();
+    } catch (e) {
+      console.warn("Backend availability save notice:", e);
+    }
+    localStorage.getItem(`driver_availability_${driverId}`);
+    localStorage.setItem(`driver_availability_${driverId}`, JSON.stringify(availability));
+    return availability;
+  },
 };
 
 export const complaintApi = {
@@ -219,18 +246,84 @@ export const complaintApi = {
 export const rideApi = {
   getAllRides: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/rides`);
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const response = await fetch(`${API_BASE_URL}/api/rides`, { headers });
       if (response.ok) return await response.json();
     } catch (e) {
-      console.warn("Backend rides endpoint offline, using cached DB mock.");
+      console.warn("Backend rides endpoint offline, using fallback.");
     }
     return [
-      { rideId: 1, riderName: "Rahul Verma", driverName: "Amit Kumar", source: "Kothrud, Pune", destination: "Viman Nagar, Pune", status: "Completed", fare: 250.00, date: "2026-07-27" },
-      { rideId: 2, riderName: "Priya Sharma", driverName: "Gitanjali Mhaske", source: "Hinjewadi Phase 1", destination: "Baner, Pune", status: "In Progress", fare: 180.00, date: "2026-07-27" },
-      { rideId: 3, riderName: "Siddharth Roy", driverName: "Amit Kumar", source: "Pune Station", destination: "Hadapsar, Pune", status: "Completed", fare: 320.00, date: "2026-07-26" },
-      { rideId: 4, riderName: "Neha Gupta", driverName: "Sulkshana Patil", source: "Aundh, Pune", destination: "Pimple Saudagar", status: "Cancelled", fare: 0.00, date: "2026-07-25" },
-      { rideId: 5, riderName: "Vikram Malhotra", driverName: "Gitanjali Mhaske", source: "Deccan Gymkhana", destination: "Swargate", status: "Completed", fare: 140.00, date: "2026-07-24" },
+      { rideId: 1, riderName: "Rahul Verma", driverName: "Amit Kumar", source: "Sangli Bus Stand", destination: "VPIMSR College", status: 1, fare: 250.00, paymentMode: "UPI" },
+      { rideId: 2, riderName: "Priya Sharma", driverName: "Dhananjay Patil", source: "Shivaji University", destination: "Railway Station", status: 1, fare: 180.00, paymentMode: "Cash" },
+      { rideId: 3, riderName: "Siddharth Roy", driverName: "Amit Kumar", source: "Market Yard", destination: "Ganapati Temple", status: 2, fare: 320.00, paymentMode: "Credit Card" },
     ];
+  },
+
+  getRideById: async (rideId) => {
+    const response = await fetch(`${API_BASE_URL}/api/rides/${rideId}`);
+    if (!response.ok) throw new Error("Failed to fetch ride details");
+    return await response.json();
+  },
+
+  getRidesByDriverId: async (driverId) => {
+    const response = await fetch(`${API_BASE_URL}/api/rides/driver/${driverId}`);
+    if (!response.ok) throw new Error("Failed to fetch driver rides");
+    return await response.json();
+  },
+
+  getRidesByUserId: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/api/rides/user/${userId}`);
+    if (!response.ok) throw new Error("Failed to fetch user rides");
+    return await response.json();
+  },
+
+  createRide: async (rideData) => {
+    const response = await fetch(`${API_BASE_URL}/api/rides`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(rideData),
+    });
+    if (!response.ok) throw new Error("Failed to create ride request");
+    return await response.json();
+  },
+
+  acceptRide: async (rideId, driverId) => {
+    const response = await fetch(`${API_BASE_URL}/api/rides/${rideId}/accept`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ driverId }),
+    });
+    if (!response.ok) throw new Error("Failed to accept ride request");
+    return await response.json();
+  },
+
+  startRide: async (rideId) => {
+    const response = await fetch(`${API_BASE_URL}/api/rides/${rideId}/start`, {
+      method: "PUT",
+    });
+    if (!response.ok) throw new Error("Failed to start trip");
+    return await response.json();
+  },
+
+  completeRide: async (rideId) => {
+    const response = await fetch(`${API_BASE_URL}/api/rides/${rideId}/complete`, {
+      method: "PUT",
+    });
+    if (!response.ok) throw new Error("Failed to complete trip");
+    return await response.json();
+  },
+
+  confirmPayment: async (rideId, paymentData) => {
+    const response = await fetch(`${API_BASE_URL}/api/rides/${rideId}/confirm-payment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(paymentData),
+    });
+    if (!response.ok) throw new Error("Failed to confirm payment");
+    return await response.json();
   },
 };
 

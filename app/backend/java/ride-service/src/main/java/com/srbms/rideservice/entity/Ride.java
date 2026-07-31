@@ -24,7 +24,7 @@ public class Ride {
     private String destination;
 
     @Column(name = "status")
-    private Integer status; // 1 = completed, 2 = inprogress
+    private Integer status; // 1 = completed, 2 = inprogress, 0 = requested, 3 = accepted
 
     public Ride() {}
 

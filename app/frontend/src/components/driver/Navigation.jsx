@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { rideApi } from "../services/api";
 
 export default function Navigation() {
   const navigate = useNavigate();
 
   const [tripStage, setTripStage] = useState("EN_ROUTE_PICKUP"); // EN_ROUTE_PICKUP, ARRIVED, TRIP_STARTED, COMPLETED
 
-  const activeTrip = {
+  const [activeTrip, setActiveTrip] = useState({
     id: "RIDE-1093",
     riderName: "Rahul Sharma",
     phone: "+91 98765 43210",
@@ -17,7 +18,33 @@ export default function Navigation() {
     totalFare: "₹160",
     paymentMode: "UPI",
     vehicleNo: "MH14CD5678",
-  };
+  });
+
+  useEffect(() => {
+    async function loadActiveTrip() {
+      try {
+        const rides = await rideApi.getAllRides();
+        if (Array.isArray(rides) && rides.length > 0) {
+          const current = rides[rides.length - 1];
+          setActiveTrip({
+            id: `RIDE-${current.rideId || current.id || 1093}`,
+            riderName: current.riderName || current.rider || `Rider #${current.userId || 4}`,
+            phone: "+91 98765 43210",
+            pickup: current.source || "Sangli Railway Station, Gate 1",
+            destination: current.destination || "Vishrambag Main Road, Sangli",
+            distance: "4.5 km",
+            estimatedTime: "12 Mins",
+            totalFare: `₹${current.fare || 160}`,
+            paymentMode: current.paymentMode || "UPI",
+            vehicleNo: "MH14CD5678",
+          });
+        }
+      } catch (err) {
+        console.warn("Backend navigation sync:", err);
+      }
+    }
+    loadActiveTrip();
+  }, []);
 
   const handleNextStage = () => {
     if (tripStage === "EN_ROUTE_PICKUP") {

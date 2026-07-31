@@ -1,9 +1,6 @@
 package com.srbms.rideservice.controller;
 
-import com.srbms.rideservice.dto.AssignDriverRequest;
-import com.srbms.rideservice.dto.CreateRideRequest;
-import com.srbms.rideservice.dto.RideDto;
-import com.srbms.rideservice.dto.UpdateRideStatusRequest;
+import com.srbms.rideservice.dto.*;
 import com.srbms.rideservice.service.RideService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +37,11 @@ public class RideController {
         return ResponseEntity.ok(rideService.getRidesByUserId(userId));
     }
 
+    @GetMapping("/driver/{driverId}")
+    public ResponseEntity<List<RideDto>> getRidesByDriverId(@PathVariable("driverId") Integer driverId) {
+        return ResponseEntity.ok(rideService.getRidesByDriverId(driverId));
+    }
+
     @PostMapping
     public ResponseEntity<RideDto> createRide(@Valid @RequestBody CreateRideRequest request) {
         RideDto createdRide = rideService.createRide(request);
@@ -53,15 +55,34 @@ public class RideController {
         return ResponseEntity.ok(rideService.updateRideStatus(id, request.getStatus()));
     }
 
+    @PutMapping("/{id}/accept")
+    public ResponseEntity<RideDto> acceptRide(
+            @PathVariable("id") Integer id,
+            @Valid @RequestBody AssignDriverRequest request) {
+        return ResponseEntity.ok(rideService.acceptRide(id, request.getDriverId()));
+    }
+
+    @PutMapping("/{id}/start")
+    public ResponseEntity<RideDto> startTrip(@PathVariable("id") Integer id) {
+        return ResponseEntity.ok(rideService.startTrip(id));
+    }
+
+    @PutMapping("/{id}/complete")
+    public ResponseEntity<RideDto> completeTrip(@PathVariable("id") Integer id) {
+        return ResponseEntity.ok(rideService.completeTrip(id));
+    }
+
+    @PostMapping("/{id}/confirm-payment")
+    public ResponseEntity<RideDto> confirmPayment(
+            @PathVariable("id") Integer id,
+            @Valid @RequestBody ConfirmPaymentRequest request) {
+        return ResponseEntity.ok(rideService.confirmPayment(id, request));
+    }
+
     @PostMapping("/{id}/assign-driver")
     public ResponseEntity<RideDto> assignDriver(
             @PathVariable("id") Integer id,
             @Valid @RequestBody AssignDriverRequest request) {
         return ResponseEntity.ok(rideService.assignDriver(id, request.getDriverId()));
-    }
-
-    @GetMapping("/driver/{driverId}")
-    public ResponseEntity<List<RideDto>> getRidesByDriverId(@PathVariable("driverId") Integer driverId) {
-        return ResponseEntity.ok(rideService.getRidesByDriverId(driverId));
     }
 }

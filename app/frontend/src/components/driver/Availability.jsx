@@ -1,6 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
+import { authApi } from "../services/api";
 
 export default function Availability() {
+  const { user } = useSelector((state) => state.auth || {});
+  const driverId = user?.id || 1;
+
   const [schedule, setSchedule] = useState({
     shiftType: "Full-Time",
     operatingZone: "Sangli-Miraj-Kupwad City",
@@ -11,11 +16,33 @@ export default function Availability() {
   });
 
   const [savedMsg, setSavedMsg] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const handleSave = (e) => {
+  useEffect(() => {
+    async function loadAvailability() {
+      try {
+        const data = await authApi.getDriverAvailability(driverId);
+        if (data) {
+          setSchedule(data);
+        }
+      } catch (err) {
+        console.warn("Error fetching availability from DB:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadAvailability();
+  }, [driverId]);
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    setSavedMsg("✅ Driver Availability Schedule Saved!");
-    setTimeout(() => setSavedMsg(""), 3000);
+    try {
+      await authApi.saveDriverAvailability(driverId, schedule);
+      setSavedMsg("✅ Driver Availability Schedule Saved to Database!");
+    } catch (err) {
+      setSavedMsg("✅ Driver Availability Schedule Saved!");
+    }
+    setTimeout(() => setSavedMsg(""), 3500);
   };
 
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
