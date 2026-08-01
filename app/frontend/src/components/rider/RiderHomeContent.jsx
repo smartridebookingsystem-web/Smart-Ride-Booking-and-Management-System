@@ -1,50 +1,22 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
+import MapComponent from "./MapComponent";
 
 export default function RiderHomeContent() {
   const { user } = useSelector((state) => state.auth || {});
-  const username = user?.username || "Rider";
+  const username = user?.username.toUpperCase() || "Rider Member";
+
+  // Location State for Interactive Leaflet Map
+  const [pickup, setPickup] = useState(null);
+  const [drop, setDrop] = useState(null);
+  const [pickupName, setPickupName] = useState("");
+  const [dropName, setDropName] = useState("");
+  const [selecting, setSelecting] = useState("pickup");
 
   return (
     <div className="rider-home-content">
-      {/* Welcome Banner Header */}
-      <div
-        className="p-4 mb-4 text-white rounded-4 shadow-sm"
-        style={{
-          background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
-          borderLeft: "6px solid #FF6B00",
-        }}
-      >
-        <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
-          <div>
-            <span
-              className="badge rounded-pill px-3 py-2 mb-2"
-              style={{
-                background: "rgba(255, 107, 0, 0.2)",
-                color: "#FF6B00",
-                fontSize: "0.85rem",
-              }}
-            >
-              Rider Dashboard
-            </span>
-            <h2 className="fw-bold mb-1">
-              Welcome back, <span style={{ color: "#FF6B00" }}>{username}</span>! 👋
-            </h2>
-            <p className="text-light mb-0" style={{ color: "#cbd5e1" }}>
-              Where would you like to go today? Book a ride in seconds with verified drivers.
-            </p>
-          </div>
-          <div className="d-flex gap-2">
-            <Link to="/rider/search-ride" className="btn btn-warning px-4 py-2 fw-semibold" style={{ background: "#FF6B00", borderColor: "#FF6B00", color: "#fff" }}>
-              <i className="bi bi-geo-alt-fill me-2"></i> Book New Ride
-            </Link>
-            <Link to="/rider/wallet" className="btn btn-outline-light px-4 py-2 fw-semibold">
-              <i className="bi bi-wallet2 me-2"></i> Check Wallet
-            </Link>
-          </div>
-        </div>
-      </div>
+
 
       {/* Hero & Quick Booking Section */}
       <section
@@ -52,8 +24,7 @@ export default function RiderHomeContent() {
         style={{
           background:
             "linear-gradient(rgba(15,23,42,.92), rgba(15,23,42,.92)), url('https://images.unsplash.com/photo-1519003722824-194d4455a60c?q=80&w=1920')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
+          backgroundSize: "cover"
         }}
       >
         <div className="row align-items-center gy-4">
@@ -133,7 +104,7 @@ export default function RiderHomeContent() {
             </div>
           </div>
 
-          {/* Right Booking Card */}
+          {/* Right Booking Card with Map */}
           <div className="col-lg-6">
             <div
               className="card border-0 shadow-lg"
@@ -144,7 +115,7 @@ export default function RiderHomeContent() {
               }}
             >
               <div
-                className="card-header border-0 py-3 px-4"
+                className="card-header border-0 py-3 px-4 d-flex justify-content-between align-items-center"
                 style={{
                   background: "#FF6B00",
                   color: "#fff",
@@ -153,39 +124,82 @@ export default function RiderHomeContent() {
                 <h5 className="mb-0 fw-bold">
                   <i className="bi bi-search me-2"></i> Quick Ride Search
                 </h5>
+                {selecting && (
+                  <span className={`badge ${selecting === "pickup" ? "bg-primary" : "bg-danger"} px-3 py-1`}>
+                    Selecting: {selecting === "pickup" ? "Pickup 📍" : "Drop 🎯"}
+                  </span>
+                )}
               </div>
 
               <div className="card-body p-4 bg-white">
+                {/* Pickup Location Input */}
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">
-                    Pickup Location
-                  </label>
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <label className="form-label fw-semibold mb-0">
+                      Pickup Location
+                    </label>
+                    {selecting === "pickup" && (
+                      <small className="text-primary fw-bold">Click Map to Pick 📍</small>
+                    )}
+                  </div>
                   <div className="input-group">
                     <span className="input-group-text bg-light border-end-0">
-                      <i className="bi bi-geo-alt-fill text-danger"></i>
+                      <i className="bi bi-geo-alt-fill text-primary"></i>
                     </span>
                     <input
                       type="text"
-                      className="form-control border-start-0"
-                      placeholder="Enter pickup location"
+                      className={`form-control border-start-0 ${selecting === "pickup" ? "border-primary shadow-sm" : ""
+                        }`}
+                      placeholder="Click here then select on map below..."
+                      value={pickupName}
+                      onFocus={() => setSelecting("pickup")}
+                      onClick={() => setSelecting("pickup")}
+                      onChange={(e) => setPickupName(e.target.value)}
                     />
                   </div>
                 </div>
 
+                {/* Destination Input */}
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">
-                    Destination
-                  </label>
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <label className="form-label fw-semibold mb-0">
+                      Destination
+                    </label>
+                    {selecting === "drop" && (
+                      <small className="text-danger fw-bold">Click Map to Pick 🎯</small>
+                    )}
+                  </div>
                   <div className="input-group">
                     <span className="input-group-text bg-light border-end-0">
-                      <i className="bi bi-pin-map-fill text-success"></i>
+                      <i className="bi bi-pin-map-fill text-danger"></i>
                     </span>
                     <input
                       type="text"
-                      className="form-control border-start-0"
-                      placeholder="Enter destination"
+                      className={`form-control border-start-0 ${selecting === "drop" ? "border-danger shadow-sm" : ""
+                        }`}
+                      placeholder="Click here then select on map below..."
+                      value={dropName}
+                      onFocus={() => setSelecting("drop")}
+                      onClick={() => setSelecting("drop")}
+                      onChange={(e) => setDropName(e.target.value)}
                     />
                   </div>
+                </div>
+
+                {/* Embedded Interactive MapComponent */}
+                <div className="mb-3 rounded-3 overflow-hidden border shadow-sm">
+                  <MapComponent
+                    pickup={pickup}
+                    drop={drop}
+                    setPickup={setPickup}
+                    setDrop={setDrop}
+                    pickupName={pickupName}
+                    dropName={dropName}
+                    setPickupName={setPickupName}
+                    setDropName={setDropName}
+                    selecting={selecting}
+                    onClose={() => setSelecting(null)}
+                  />
                 </div>
 
                 <div className="row">
@@ -210,7 +224,7 @@ export default function RiderHomeContent() {
 
                 <Link
                   to="/rider/search-ride"
-                  className="btn btn-primary w-100 mt-2 py-2 fw-semibold text-white"
+                  className="btn btn-primary w-100 mt-2 py-2 fw-semibold text-white shadow-sm"
                   style={{ background: "#FF6B00", borderColor: "#FF6B00" }}
                 >
                   <i className="bi bi-search me-2"></i>
@@ -514,6 +528,6 @@ export default function RiderHomeContent() {
           ))}
         </div>
       </section>
-    </div>
+    </div >
   );
 }

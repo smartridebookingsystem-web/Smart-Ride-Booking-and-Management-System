@@ -1,56 +1,115 @@
 import React, { useState } from "react";
+import MapComponent from "./MapComponent";
 
 export default function SearchRide() {
-  const [pickup, setPickup] = useState("");
-  const [destination, setDestination] = useState("");
+  const [pickup, setPickup] = useState(null);
+  const [drop, setDrop] = useState(null);
+  const [pickupName, setPickupName] = useState("");
+  const [dropName, setDropName] = useState("");
+  const [selecting, setSelecting] = useState(null);
   const [vehicleType, setVehicleType] = useState("Hatchback");
   const [isSearching, setIsSearching] = useState(false);
   const [rideResult, setRideResult] = useState(null);
 
   const vehicleRates = {
-    Hatchback: { base: 50, perKm: 12, estTime: "3-5 mins away" },
-    Sedan: { base: 80, perKm: 16, estTime: "4-7 mins away" },
-    SUV: { base: 120, perKm: 22, estTime: "6-10 mins away" },
+    Hatchback: { base: 50, perKm: 12, estTime: "3-5 mins away", icon: "bi-car-front-fill" },
+    Sedan: { base: 80, perKm: 16, estTime: "4-7 mins away", icon: "bi-car-front" },
+    SUV: { base: 120, perKm: 22, estTime: "6-10 mins away", icon: "bi-truck-front-fill" },
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (!pickup || !destination) {
-      alert("Please enter both Pickup and Destination locations.");
+    if (!pickupName || !dropName) {
+      alert("Please enter or select both Pickup and Destination locations on the map.");
       return;
     }
     setIsSearching(true);
-    // Simulate fare calculation and driver search
+
     setTimeout(() => {
       setIsSearching(false);
-      const estDistance = (Math.random() * 12 + 3).toFixed(1);
+      // Calculate realistic distance if coordinates exist
+      let estDistance = 5.2;
+      if (pickup && drop) {
+        const rad = Math.PI / 180;
+        const dLat = (drop[0] - pickup[0]) * rad;
+        const dLon = (drop[1] - pickup[1]) * rad;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(pickup[0] * rad) *
+            Math.cos(drop[0] * rad) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        estDistance = Number((6371 * c).toFixed(1));
+        if (estDistance < 1) estDistance = 1.5;
+      } else {
+        estDistance = Number((Math.random() * 10 + 3).toFixed(1));
+      }
+
       const rate = vehicleRates[vehicleType];
       const estimatedFare = (rate.base + estDistance * rate.perKm).toFixed(0);
 
       setRideResult({
-        pickup,
-        destination,
+        pickup: pickupName,
+        destination: dropName,
         vehicleType,
         distanceKm: estDistance,
         fare: estimatedFare,
         eta: rate.estTime,
       });
-    }, 1200);
+    }, 800);
+  };
+
+  const handleReset = () => {
+    setPickup(null);
+    setDrop(null);
+    setPickupName("");
+    setDropName("");
+    setSelecting(null);
+    setRideResult(null);
   };
 
   return (
     <div className="container-fluid p-0">
+      {/* Header Banner */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h4 className="fw-bold text-dark mb-1">
+            <i className="bi bi-geo-alt-fill text-warning me-2"></i> Search & Book Ride
+          </h4>
+          <p className="text-muted small mb-0">
+            Select pickup & drop points on the interactive live map below
+          </p>
+        </div>
+        {selecting && (
+          <span className="badge bg-warning text-dark px-3 py-2 animate__animated animate__fadeIn">
+            <i className="bi bi-crosshair me-1"></i> Mode Active: Click map to select {selecting.toUpperCase()}
+          </span>
+        )}
+      </div>
+
       <div className="row g-4">
-        {/* Search Input Form */}
+        {/* Left Column: Search & Booking Controls */}
         <div className="col-lg-5">
-          <div className="card border-0 shadow-sm rounded-4 p-4">
+          <div className="card border-0 shadow-sm rounded-4 p-4 h-100">
             <h5 className="fw-bold mb-4" style={{ color: "#0F172A" }}>
-              <i className="bi bi-geo-alt-fill text-primary me-2"></i> Book Your Ride
+              <i className="bi bi-sliders text-warning me-2"></i> Trip Details
             </h5>
 
             <form onSubmit={handleSearch}>
+              {/* Pickup Field */}
               <div className="mb-3">
-                <label className="form-label fw-semibold text-muted small">PICKUP LOCATION</label>
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <label className="form-label fw-semibold text-muted small mb-0">PICKUP LOCATION</label>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${selecting === "pickup" ? "btn-warning text-white fw-bold" : "btn-outline-warning text-dark"} py-0 px-2 small`}
+                    onClick={() => setSelecting(selecting === "pickup" ? null : "pickup")}
+                  >
+                    <i className="bi bi-geo-fill me-1"></i>
+                    {selecting === "pickup" ? "Selecting on Map..." : "Pick on Map"}
+                  </button>
+                </div>
                 <div className="input-group">
                   <span className="input-group-text bg-light border-end-0">
                     <i className="bi bi-circle-fill text-primary fs-6"></i>
@@ -58,16 +117,27 @@ export default function SearchRide() {
                   <input
                     type="text"
                     className="form-control border-start-0 py-2"
-                    placeholder="Enter pickup address..."
-                    value={pickup}
-                    onChange={(e) => setPickup(e.target.value)}
+                    placeholder="Enter pickup location or click Pick on Map..."
+                    value={pickupName}
+                    onChange={(e) => setPickupName(e.target.value)}
                     required
                   />
                 </div>
               </div>
 
+              {/* Destination Field */}
               <div className="mb-3">
-                <label className="form-label fw-semibold text-muted small">DESTINATION</label>
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <label className="form-label fw-semibold text-muted small mb-0">DROP DESTINATION</label>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${selecting === "drop" ? "btn-danger text-white fw-bold" : "btn-outline-danger"} py-0 px-2 small`}
+                    onClick={() => setSelecting(selecting === "drop" ? null : "drop")}
+                  >
+                    <i className="bi bi-geo-alt-fill me-1"></i>
+                    {selecting === "drop" ? "Selecting on Map..." : "Pick on Map"}
+                  </button>
+                </div>
                 <div className="input-group">
                   <span className="input-group-text bg-light border-end-0">
                     <i className="bi bi-geo-alt-fill text-danger fs-6"></i>
@@ -75,25 +145,24 @@ export default function SearchRide() {
                   <input
                     type="text"
                     className="form-control border-start-0 py-2"
-                    placeholder="Enter drop destination..."
-                    value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
+                    placeholder="Enter drop location or click Pick on Map..."
+                    value={dropName}
+                    onChange={(e) => setDropName(e.target.value)}
                     required
                   />
                 </div>
               </div>
 
+              {/* Vehicle Tier Selection */}
               <div className="mb-4">
-                <label className="form-label fw-semibold text-muted small">VEHICLE TIER</label>
+                <label className="form-label fw-semibold text-muted small">VEHICLE CATEGORY</label>
                 <div className="d-flex gap-2">
-                  {["Hatchback", "Sedan", "SUV"].map((type) => (
+                  {Object.keys(vehicleRates).map((type) => (
                     <button
                       key={type}
                       type="button"
                       className={`btn flex-grow-1 py-2 fw-semibold border ${
-                        vehicleType === type
-                          ? "btn-warning text-white"
-                          : "btn-light text-dark"
+                        vehicleType === type ? "btn-warning text-white shadow-sm" : "btn-light text-dark"
                       }`}
                       style={{
                         background: vehicleType === type ? "#FF6B00" : undefined,
@@ -101,113 +170,102 @@ export default function SearchRide() {
                       }}
                       onClick={() => setVehicleType(type)}
                     >
+                      <i className={`bi ${vehicleRates[type].icon} me-1`}></i>
                       {type}
                     </button>
                   ))}
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="btn w-100 py-3 fw-bold text-white shadow-sm"
-                style={{ background: "#FF6B00" }}
-                disabled={isSearching}
-              >
-                {isSearching ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    Calculating Fare & Searching Drivers...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-search me-2"></i> Search Ride
-                  </>
-                )}
-              </button>
+              {/* Action Buttons */}
+              <div className="d-flex gap-2 mb-3">
+                <button
+                  type="submit"
+                  className="btn flex-grow-1 py-3 fw-bold text-white shadow-sm"
+                  style={{ background: "#FF6B00" }}
+                  disabled={isSearching}
+                >
+                  {isSearching ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Calculating Fare & Route...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-search me-2"></i> Calculate Fare & Search
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary px-3"
+                  onClick={handleReset}
+                  title="Clear Locations"
+                >
+                  <i className="bi bi-arrow-counterclockwise"></i>
+                </button>
+              </div>
             </form>
+
+            {/* Ride Details / Confirmation Box */}
+            {rideResult && (
+              <div className="mt-4 p-3 bg-light rounded-4 border border-warning">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <h6 className="fw-bold mb-0 text-dark">
+                    <i className="bi bi-ticket-perforated-fill text-warning me-1"></i> Ride Fare Estimate
+                  </h6>
+                  <span className="badge bg-success">Driver Available</span>
+                </div>
+                <div className="d-flex justify-content-between align-items-center my-3">
+                  <div>
+                    <span className="text-muted small d-block">Vehicle: {rideResult.vehicleType}</span>
+                    <span className="text-muted small d-block">Distance: {rideResult.distanceKm} km</span>
+                    <span className="text-success small fw-semibold">ETA: {rideResult.eta}</span>
+                  </div>
+                  <h3 className="fw-bold mb-0" style={{ color: "#FF6B00" }}>
+                    ₹{rideResult.fare}
+                  </h3>
+                </div>
+                <button
+                  className="btn w-100 fw-bold text-white shadow-sm py-2"
+                  style={{ background: "#22c55e" }}
+                  onClick={() => alert(`Ride Request Sent! Pickup: ${rideResult.pickup} → Drop: ${rideResult.destination}`)}
+                >
+                  <i className="bi bi-check-circle-fill me-2"></i> Confirm & Request Ride
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Search Results / Ride Confirmation Panel */}
+        {/* Right Column: Live Interactive Map Component */}
         <div className="col-lg-7">
-          {rideResult ? (
-            <div className="card border-0 shadow-sm rounded-4 p-4">
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <h5 className="fw-bold mb-0">Ride Details & Fare Preview</h5>
-                <span className="badge bg-success px-3 py-2">Driver Available</span>
-              </div>
-              <hr />
-
-              <div className="row g-3 mb-4">
-                <div className="col-md-6">
-                  <small className="text-muted d-block">Pickup Location</small>
-                  <strong className="text-dark">{rideResult.pickup}</strong>
-                </div>
-                <div className="col-md-6">
-                  <small className="text-muted d-block">Destination</small>
-                  <strong className="text-dark">{rideResult.destination}</strong>
-                </div>
-                <div className="col-md-4">
-                  <small className="text-muted d-block">Est. Distance</small>
-                  <strong>{rideResult.distanceKm} km</strong>
-                </div>
-                <div className="col-md-4">
-                  <small className="text-muted d-block">Vehicle Type</small>
-                  <strong>{rideResult.vehicleType}</strong>
-                </div>
-                <div className="col-md-4">
-                  <small className="text-muted d-block">Driver ETA</small>
-                  <strong className="text-success">{rideResult.eta}</strong>
-                </div>
-              </div>
-
-              <div className="p-3 bg-light rounded-3 d-flex justify-content-between align-items-center mb-4">
-                <div>
-                  <h6 className="mb-0 text-muted">Total Fare</h6>
-                  <small className="text-muted">Includes taxes & toll charges</small>
-                </div>
-                <h2 className="fw-bold mb-0" style={{ color: "#FF6B00" }}>
-                  ₹{rideResult.fare}
-                </h2>
-              </div>
-
-              <div className="d-flex gap-3">
-                <button
-                  className="btn btn-lg w-100 fw-bold text-white shadow-sm"
-                  style={{ background: "#FF6B00" }}
-                  onClick={() => alert(`Ride Request Sent! Searching for nearby ${rideResult.vehicleType} drivers...`)}
-                >
-                  Confirm & Request Ride
-                </button>
-                <button
-                  className="btn btn-outline-secondary btn-lg px-4"
-                  onClick={() => setRideResult(null)}
-                >
-                  Reset
-                </button>
-              </div>
+          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+            <div className="d-flex justify-content-between align-items-center mb-3 px-1">
+              <h6 className="fw-bold mb-0 text-dark">
+                <i className="bi bi-map-fill text-primary me-2"></i> Live Interactive Route Map
+              </h6>
+              <small className="text-muted">
+                <i className="bi bi-info-circle me-1"></i> Click map to place markers directly
+              </small>
             </div>
-          ) : (
-            <div className="card border-0 shadow-sm rounded-4 p-5 text-center bg-white h-100 d-flex justify-content-center align-items-center">
-              <div
-                className="mx-auto mb-3 d-flex align-items-center justify-content-center"
-                style={{
-                  width: "90px",
-                  height: "90px",
-                  borderRadius: "50%",
-                  background: "rgba(255,107,0,.12)",
-                }}
-              >
-                <i className="bi bi-geo-alt-fill text-orange fs-1" style={{ color: "#FF6B00" }}></i>
-              </div>
-              <h5 className="fw-bold text-dark">Ready to Explore?</h5>
-              <p className="text-muted max-w-sm mb-0">
-                Enter your pickup address and destination on the left panel to calculate fare and search nearby drivers instantly.
-              </p>
-            </div>
-          )}
+
+            <MapComponent
+              pickup={pickup}
+              drop={drop}
+              setPickup={setPickup}
+              setDrop={setDrop}
+              pickupName={pickupName}
+              dropName={dropName}
+              setPickupName={setPickupName}
+              setDropName={setDropName}
+              selecting={selecting}
+              onClose={() => setSelecting(null)}
+            />
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
