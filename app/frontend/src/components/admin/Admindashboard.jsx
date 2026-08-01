@@ -55,11 +55,7 @@ export default function Admindashboard() {
       const allPayments = await paymentApi.getAllPayments().catch(() => []);
       setPayments(allPayments);
 
-      const allComplaints = await complaintApi.getAllComplaints().catch(() => [
-        { complaintId: 1, userId: 4, rideId: 1, subject: "Driver arrived late for pickup", description: "Driver was 20 minutes late without notification.", category: "Late Pickup", status: "Open", resolutionNotes: "", createdAt: "2026-07-25 10:15" },
-        { complaintId: 2, userId: 3, rideId: 2, subject: "Incorrect fare deducted", description: "Charged extra ₹50 for luggage.", category: "Fare Dispute", status: "In Progress", resolutionNotes: "Support reviewing transaction details.", createdAt: "2026-07-26 14:30" },
-        { complaintId: 3, userId: 4, rideId: 3, subject: "Unpolite behavior by driver", description: "Driver was talking loudly on phone.", category: "Driver Behavior", status: "Resolved", resolutionNotes: "Warning issued to driver.", createdAt: "2026-07-27 09:00" },
-      ]);
+      const allComplaints = await complaintApi.getAllComplaints().catch(() => []);
       setComplaints(allComplaints);
     } catch (err) {
       console.error("[Admin Dashboard] Failed to load data:", err);

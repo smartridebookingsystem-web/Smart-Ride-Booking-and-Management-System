@@ -245,21 +245,16 @@ export const complaintApi = {
 
 export const rideApi = {
   getAllRides: async () => {
-    try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const response = await fetch(`${API_BASE_URL}/api/rides`, { headers });
-      if (response.ok) return await response.json();
-    } catch (e) {
-      console.warn("Backend rides endpoint offline, using fallback.");
+    const response = await fetch(`${API_BASE_URL}/api/rides`, { headers });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to fetch rides from database.");
     }
-    return [
-      { rideId: 1, riderName: "Rahul Verma", driverName: "Amit Kumar", source: "Sangli Bus Stand", destination: "VPIMSR College", status: 1, fare: 250.00, paymentMode: "UPI" },
-      { rideId: 2, riderName: "Priya Sharma", driverName: "Dhananjay Patil", source: "Shivaji University", destination: "Railway Station", status: 1, fare: 180.00, paymentMode: "Cash" },
-      { rideId: 3, riderName: "Siddharth Roy", driverName: "Amit Kumar", source: "Market Yard", destination: "Ganapati Temple", status: 2, fare: 320.00, paymentMode: "Credit Card" },
-    ];
+    return await response.json();
   },
 
   getRideById: async (rideId) => {
@@ -275,17 +270,12 @@ export const rideApi = {
   },
 
   getRidesByUserId: async (userId) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/rides/user/${userId}`);
-      if (response.ok) return await response.json();
-    } catch (e) {
-      console.warn("Backend user rides endpoint notice:", e);
+    const response = await fetch(`${API_BASE_URL}/api/rides/user/${userId}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to fetch user rides from database.");
     }
-    return [
-      { rideId: 1049, date: "2026-07-28 14:30", source: "Pune Railway Station", destination: "Hinjewadi Phase 1", fare: 340, status: 1, driverName: "Ramesh Shinde (MH12-AB-4321)" },
-      { rideId: 1022, date: "2026-07-25 09:15", source: "Kothrud Depot", destination: "Pune Airport (PNQ)", fare: 480, status: 1, driverName: "Suresh Kumar (MH12-CD-9876)" },
-      { rideId: 1005, date: "2026-07-20 18:45", source: "FC Road, Shivajinagar", destination: "Viman Nagar", fare: 220, status: 0, driverName: "N/A" },
-    ];
+    return await response.json();
   },
 
   createRide: async (rideData) => {
@@ -294,7 +284,7 @@ export const rideApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(rideData),
     });
-    if (!response.ok) throw new Error("Failed to create ride request");
+    if (!response.ok) throw new Error("Failed to create ride request in database");
     return await response.json();
   },
 
@@ -337,18 +327,13 @@ export const rideApi = {
 
 export const paymentApi = {
   getAllPayments: async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/payments`);
-      if (response.ok) return await response.json();
-    } catch (e) {
-      console.warn("Backend payments endpoint offline, using cached DB mock.");
+    const response = await fetch(`${API_BASE_URL}/api/payments`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to fetch payments from database.");
     }
-    return [
-      { paymentId: "PAY-1001", rideId: 1, riderName: "Rahul Verma", totalFare: 250.00, paymentMode: "UPI", status: "Paid", createdAt: "2026-07-27 10:15" },
-      { paymentId: "PAY-1002", rideId: 2, riderName: "Priya Sharma", totalFare: 180.00, paymentMode: "Cash", status: "Pending", createdAt: "2026-07-27 11:30" },
-      { paymentId: "PAY-1003", rideId: 3, riderName: "Siddharth Roy", totalFare: 320.00, paymentMode: "Credit Card", status: "Paid", createdAt: "2026-07-26 18:45" },
-      { paymentId: "PAY-1004", rideId: 5, riderName: "Vikram Malhotra", totalFare: 140.00, paymentMode: "UPI", status: "Paid", createdAt: "2026-07-24 14:20" },
-    ];
+    return await response.json();
   },
 };
+
 

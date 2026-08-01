@@ -65,28 +65,18 @@ export default function DriverHome() {
   const pendingRideFromDb = ridesList.find(r => r.status === 2 || r.status === 0) || ridesList[0];
 
   const pendingRequest = pendingRideFromDb ? {
-    id: `REQ-${pendingRideFromDb.rideId || pendingRideFromDb.id || 201}`,
+    id: `REQ-${pendingRideFromDb.rideId || pendingRideFromDb.id}`,
+    rideId: pendingRideFromDb.rideId || pendingRideFromDb.id,
     riderName: pendingRideFromDb.riderName || pendingRideFromDb.rider || `Rider #${pendingRideFromDb.userId || 4}`,
     phone: "+91 98765 43210",
-    pickup: pendingRideFromDb.source || "Sangli Railway Station",
-    destination: pendingRideFromDb.destination || "Vishrambag Main Road, Sangli",
+    pickup: pendingRideFromDb.source || pendingRideFromDb.pickup,
+    destination: pendingRideFromDb.destination,
     distance: "4.5 km",
-    estimatedFare: `₹${pendingRideFromDb.fare || 160}`,
+    estimatedFare: `₹${pendingRideFromDb.fare}`,
     paymentMode: pendingRideFromDb.paymentMode || "UPI",
-    vehicleType: "Sedan",
+    vehicleType: pendingRideFromDb.vehicleType || "Sedan",
     time: "Just now",
-  } : {
-    id: "REQ-201",
-    riderName: "Rahul Sharma",
-    phone: "+91 98765 43210",
-    pickup: "Sangli Railway Station",
-    destination: "Vishrambag Main Road, Sangli",
-    distance: "4.5 km",
-    estimatedFare: "₹160",
-    paymentMode: "UPI",
-    vehicleType: "Sedan",
-    time: "Just now",
-  };
+  } : null;
 
   const handleToggleMute = () => {
     const muted = ringtoneService.toggleMute();
