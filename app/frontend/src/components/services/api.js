@@ -248,12 +248,17 @@ export const rideApi = {
     try {
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");
       const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const response = await fetch(`${API_BASE_URL}/api/rides`, { headers });
+      let response = await fetch(`${API_BASE_URL}/api/rides`, { headers });
+      if (!response.ok) {
+        response = await fetch(`http://localhost:8082/api/rides`, { headers });
+      }
       if (response.ok) return await response.json();
     } catch (e) {
-      console.warn("Backend rides endpoint offline, using fallback.");
+      console.warn("Backend rides endpoint notice, attempting direct port 8082 fallback:", e);
+      try {
+        const directResp = await fetch(`http://localhost:8082/api/rides`);
+        if (directResp.ok) return await directResp.json();
+      } catch (err) {}
     }
     return [
       { rideId: 1, riderName: "Rahul Verma", driverName: "Amit Kumar", source: "Sangli Bus Stand", destination: "VPIMSR College", status: 1, fare: 250.00, paymentMode: "UPI" },
