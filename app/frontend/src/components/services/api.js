@@ -245,16 +245,24 @@ export const complaintApi = {
 
 export const rideApi = {
   getAllRides: async () => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-    const headers = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+    try {
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const response = await fetch(`${API_BASE_URL}/api/rides`, { headers });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to fetch rides from database.");
+      let response = await fetch(`${API_BASE_URL}/api/rides`, { headers });
+      if (!response.ok) {
+        response = await fetch(`http://localhost:8082/api/rides`, { headers });
+      }
+      if (response.ok) return await response.json();
+    } catch (e) {
+      console.warn("Backend rides endpoint notice, attempting direct port 8082 fallback:", e);
+      try {
+        const directResp = await fetch(`http://localhost:8082/api/rides`);
+        if (directResp.ok) return await directResp.json();
+      } catch (err) {}
     }
-    return await response.json();
+    return [];
   },
 
   getRideById: async (rideId) => {

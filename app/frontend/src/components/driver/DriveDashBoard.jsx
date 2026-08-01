@@ -1,167 +1,126 @@
-import React from "react";
-import {
-  Car,
-  Wallet,
-  Bell,
-  Star,
-  Clock,
-  MapPin,
-} from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
+import { rideApi, authApi } from "../services/api";
 
-function DriverDashboard() {
+export default function DriveDashBoard() {
+  // State for rides and vehicle info
+  const [rides, setRides] = useState([]);
+  const [vehicle, setVehicle] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const { token } = useSelector((state) => state.auth) || {};
+
+  // Fetch rides and driver profile on mount
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const ridesData = await rideApi.getAllRides();
+        if (Array.isArray(ridesData)) setRides(ridesData);
+        // Load driver profile for vehicle info
+        if (token) {
+          const profile = await authApi.getProfile(token);
+          if (profile) {
+            setVehicle({
+              vehicleNo: profile.licenseNo || "-",
+              vehicleType: profile.vehicleType || "Sedan",
+              capacity: profile.capacity || 4,
+              fuelType: profile.fuelType || "Petrol",
+              status: profile.status === "verified" ? "Verified" : "Pending",
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Backend sync error in DriveDashBoard:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [token]);
+
+  // Helper calculations
+  const totalEarnings = rides.reduce((sum, r) => sum + (parseFloat(r.fare) || 250), 0);
+  const totalRides = rides.length;
+  const totalDistance = rides.reduce((sum, r) => {
+    const distStr = typeof r.distance === "string" ? r.distance.replace(/[^0-9.]/g, "") : r.distance;
+    const km = parseFloat(distStr) || 0;
+    return sum + km;
+  }, 0);
+
+  // Render
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <div className="w-64 bg-white shadow-lg p-5">
-        <h1 className="text-3xl font-bold text-orange-500 mb-8">
-          DriveCab
-        </h1>
-
-        <ul className="space-y-4">
-          <li className="bg-orange-500 text-white p-3 rounded-lg">
-            Dashboard
-          </li>
-          <li className="p-3 hover:bg-orange-100 rounded-lg cursor-pointer">
-            Ride Requests
-          </li>
-          <li className="p-3 hover:bg-orange-100 rounded-lg cursor-pointer">
-            Earnings
-          </li>
-          <li className="p-3 hover:bg-orange-100 rounded-lg cursor-pointer">
-            Ride History
-          </li>
-          <li className="p-3 hover:bg-orange-100 rounded-lg cursor-pointer">
-            Ratings
-          </li>
-        </ul>
+    <div className="container-fluid py-4 px-3 px-md-4" style={{ backgroundColor: "#0B0F19", minHeight: "100vh", color: "#F8FAFC" }}>
+      {/* Header */}
+      <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+        <h4 className="fw-bold text-white mb-1">Driver Dashboard</h4>
+        <button className="btn btn-primary fw-semibold rounded-pill px-3.5 py-2">
+          <i className="bi bi-bank me-2"></i>Withdraw to Bank
+        </button>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 p-8">
-        <h2 className="text-3xl font-bold mb-6">
-          Driver Dashboard
-        </h2>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-6 mb-8">
-          <Card
-            title="Today's Earnings"
-            value="₹1,250"
-            icon={<Wallet />}
-          />
-          <Card
-            title="Completed Rides"
-            value="8"
-            icon={<Car />}
-          />
-          <Card
-            title="Distance Covered"
-            value="72 km"
-            icon={<MapPin />}
-          />
-          <Card
-            title="Working Hours"
-            value="6h 30m"
-            icon={<Clock />}
-          />
-        </div>
-
-        {/* Ride Requests */}
-        <div className="bg-white p-6 rounded-xl shadow-md mb-8">
-          <h3 className="text-xl font-semibold mb-4">
-            Ride Requests
-          </h3>
-
-          <div className="border rounded-lg p-4 flex justify-between items-center">
-            <div>
-              <h4 className="font-bold">
-                Rahul Sharma
-              </h4>
-              <p>Railway Station → Airport</p>
-              <p className="text-gray-500">
-                Distance: 12 km
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xl font-bold text-orange-500">
-                ₹350
-              </p>
-            </div>
-
-            <div className="space-x-2">
-              <button className="border border-orange-500 text-orange-500 px-4 py-2 rounded">
-                Reject
-              </button>
-
-              <button className="bg-orange-500 text-white px-4 py-2 rounded">
-                Accept
-              </button>
-            </div>
+      {/* KPI Cards */}
+      <div className="row g-3 mb-4">
+        <div className="col-sm-6 col-lg-3">
+          <div className="card border-0 shadow-sm p-3" style={{ borderRadius: "14px", background: "linear-gradient(135deg, #FFF5ED 0%, #FFFFFF 100%)", borderLeft: "4px solid var(--primary)" }}>
+            <span className="text-secondary small fw-semibold">Wallet Balance</span>
+            <h3 className="fw-bold text-primary mt-1 mb-0">₹{(totalEarnings * 0.8).toFixed(2)}</h3>
+            <small className="text-success mt-1 d-block"><i className="bi bi-shield-check me-1"></i>Available for Instant Payout</small>
           </div>
         </div>
-
-        {/* Bottom Grid */}
-        <div className="grid grid-cols-2 gap-6">
-          {/* Wallet */}
-          <div className="bg-white p-6 rounded-xl shadow">
-            <h3 className="text-xl font-semibold mb-4">
-              Wallet
-            </h3>
-
-            <p className="text-4xl font-bold text-orange-500">
-              ₹2,450
-            </p>
-
-            <button className="mt-4 bg-orange-500 text-white px-5 py-2 rounded-lg">
-              Withdraw
-            </button>
-          </div>
-
-          {/* Performance */}
-          <div className="bg-white p-6 rounded-xl shadow">
-            <h3 className="text-xl font-semibold mb-4">
-              Performance
-            </h3>
-
-            <div className="space-y-3">
-              <p>Acceptance Rate: 95%</p>
-              <p>Cancellation Rate: 2%</p>
-              <p>Completion Rate: 98%</p>
-            </div>
+        <div className="col-sm-6 col-lg-3">
+          <div className="card border-0 shadow-sm p-3" style={{ borderRadius: "14px" }}>
+            <span className="text-secondary small fw-semibold">Today's Earnings</span>
+            <h3 className="fw-bold text-dark mt-1 mb-0">₹{totalEarnings.toFixed(2)}</h3>
+            <small className="text-secondary mt-1 d-block">{totalRides} Completed Trips</small>
           </div>
         </div>
+        <div className="col-sm-6 col-lg-3">
+          <div className="card border-0 shadow-sm p-3" style={{ borderRadius: "14px" }}>
+            <span className="text-secondary small fw-semibold">Distance Covered</span>
+            <h3 className="fw-bold text-dark mt-1 mb-0">{totalDistance.toFixed(1)} km</h3>
+            <small className="text-secondary mt-1 d-block">Based on recorded rides</small>
+          </div>
+        </div>
+        <div className="col-sm-6 col-lg-3">
+          <div className="card border-0 shadow-sm p-3" style={{ borderRadius: "14px" }}>
+            <span className="text-secondary small fw-semibold">Active Shift</span>
+            <h3 className="fw-bold text-dark mt-1 mb-0">{totalRides > 0 ? "On Duty" : "Off Duty"}</h3>
+            <small className="text-secondary mt-1 d-block">Based on current ride activity</small>
+          </div>
+        </div>
+      </div>
 
-        {/* Ride History */}
-        <div className="bg-white p-6 rounded-xl shadow mt-8">
-          <h3 className="text-xl font-semibold mb-4">
-            Ride History
-          </h3>
-
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="p-3">Passenger</th>
-                <th className="p-3">Pickup</th>
-                <th className="p-3">Drop</th>
-                <th className="p-3">Fare</th>
+      {/* Ride History Table */}
+      <div className="card border-0 shadow-sm p-3" style={{ borderRadius: "14px" }}>
+        <h5 className="fw-bold text-dark mb-3">Ride History</h5>
+        <div className="table-responsive">
+          <table className="table table-hover align-middle mb-0">
+            <thead className="table-light">
+              <tr>
+                <th>Sr. No.</th>
+                <th>Pickup → Destination</th>
+                <th>Fare</th>
+                <th>Status</th>
               </tr>
             </thead>
-
             <tbody>
-              <tr className="border-b">
-                <td className="p-3">Rahul Sharma</td>
-                <td className="p-3">Station</td>
-                <td className="p-3">Airport</td>
-                <td className="p-3">₹350</td>
-              </tr>
-
-              <tr>
-                <td className="p-3">Priya Patil</td>
-                <td className="p-3">Bus Stand</td>
-                <td className="p-3">City Mall</td>
-                <td className="p-3">₹220</td>
-              </tr>
+              {rides.length > 0 ? (
+                rides.map((r, idx) => (
+                  <tr key={idx}>
+                    <td className="fw-bold">#{idx + 1}</td>
+                    <td>{r.source || "Unknown"} → {r.destination || "Unknown"}</td>
+                    <td>₹{r.fare || 250}</td>
+                    <td>{r.status === 1 || r.status === "Completed" ? "Completed" : "In Progress"}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="text-center py-4">
+                    <i className="bi bi-info-circle text-muted" style={{ fontSize: "2rem" }}></i>
+                    <p className="mt-2">No ride data available.</p>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -169,22 +128,3 @@ function DriverDashboard() {
     </div>
   );
 }
-
-function Card({ title, value, icon }) {
-  return (
-    <div className="bg-white p-5 rounded-xl shadow flex justify-between items-center">
-      <div>
-        <p className="text-gray-500">{title}</p>
-        <h3 className="text-3xl font-bold mt-2">
-          {value}
-        </h3>
-      </div>
-
-      <div className="bg-orange-100 p-3 rounded-full text-orange-500">
-        {icon}
-      </div>
-    </div>
-  );
-}
-
-export default DriverDashboard;

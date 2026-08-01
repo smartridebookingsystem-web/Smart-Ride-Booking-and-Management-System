@@ -775,7 +775,7 @@ export default function DriverHome() {
           <table className="table table-dark table-hover align-middle mb-0" style={{ background: "transparent" }}>
             <thead>
               <tr className="text-light opacity-75 border-bottom border-white border-opacity-10">
-                <th>Passenger</th>
+                <th>Sr. No.</th>
                 <th>Pickup & Destination Route</th>
                 <th>Fare Amount</th>
                 <th>Payment Mode</th>
@@ -792,9 +792,9 @@ export default function DriverHome() {
                     ride.pickup.toLowerCase().includes(tripSearch.toLowerCase()) ||
                     ride.drop.toLowerCase().includes(tripSearch.toLowerCase())
                 )
-                .map((ride) => (
+                .map((ride, idx) => (
                   <tr key={ride.id} className="border-bottom border-white border-opacity-10">
-                    <td className="fw-bold text-white">{ride.rider}</td>
+                    <td className="fw-bold text-white">#{idx + 1}</td>
                     <td>
                       <small className="d-block text-white fw-semibold">{ride.pickup}</small>
                       <small className="text-light opacity-75">{ride.drop}</small>
