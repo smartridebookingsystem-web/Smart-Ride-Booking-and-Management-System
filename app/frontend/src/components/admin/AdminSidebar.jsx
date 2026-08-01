@@ -63,27 +63,28 @@ export default function AdminSidebar({
 
   return (
     <div
-      className="card border-0 shadow-sm rounded-4 overflow-hidden"
+      className="card border-0 shadow-sm rounded-4 overflow-hidden h-100 d-flex flex-column"
       style={{
         backgroundColor: "#0f172a",
         color: "#f8fafc",
         boxShadow: "4px 0 15px rgba(0, 0, 0, 0.15)",
+        minHeight: "100%",
       }}
     >
       <div
-        className="card-header border-0 py-3 px-4 d-flex align-items-center gap-2"
+        className="card-header border-0 py-3.5 px-4 d-flex align-items-center gap-2"
         style={{
           backgroundColor: "#0f172a",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
           fontSize: "1.25rem",
           fontWeight: 700,
           color: "#ffffff",
         }}
       >
-        <span>🚕 Smart<span style={{ color: "#ff6b00" }}>Ride</span> Admin</span>
+        <span>🚕 Smart<span style={{ color: "#ff6b00" }}>Ride</span></span>
       </div>
 
-      <div className="card-body p-3 d-flex flex-column gap-1">
+      <div className="card-body p-3 d-flex flex-column gap-2 flex-grow-1">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           return (

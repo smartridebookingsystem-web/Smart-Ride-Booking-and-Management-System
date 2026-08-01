@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 export default function DashboardHome({
   totalRevenue,
@@ -7,6 +7,36 @@ export default function DashboardHome({
   openComplaintsCount,
   rides,
 }) {
+  const [driverCount, setDriverCount] = useState(totalDriversCount ?? 0);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchDriverCount = async () => {
+      try {
+        const response = await fetch("http://localhost:8085/api/admin/dashboard/driver-count")
+          .catch(() => fetch("http://localhost:8080/api/admin/dashboard/driver-count"));
+        if (!response.ok) {
+          throw new Error(`Failed to fetch driver count. HTTP Status: ${response.status}`);
+        }
+        const data = await response.json();
+        const count = typeof data === "number" ? data : (data.count ?? data.driverCount ?? 0);
+        if (isMounted) {
+          setDriverCount(count);
+        }
+      } catch (err) {
+        console.error("[DashboardHome] Error fetching driver count from /api/admin/dashboard/driver-count:", err);
+        if (isMounted) {
+          setDriverCount(0);
+        }
+      }
+    };
+
+    fetchDriverCount();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <div>
       {/* KPI Cards */}
@@ -68,7 +98,7 @@ export default function DashboardHome({
             <div className="d-flex align-items-center justify-content-between">
               <div>
                 <span className="small fw-bold text-uppercase" style={{ color: "#cbd5e1" }}>TOTAL DRIVERS</span>
-                <h3 className="fw-bold mb-0 text-white mt-1">{totalDriversCount}</h3>
+                <h3 className="fw-bold mb-0 text-white mt-1">{driverCount}</h3>
               </div>
               <div
                 className="p-3 rounded-circle d-flex align-items-center justify-content-center"
