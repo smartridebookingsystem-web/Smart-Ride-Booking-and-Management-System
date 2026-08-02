@@ -813,13 +813,30 @@ export const rideApi = {
    *
    * GET /api/rides/user/{userId}
    */
-  getRidesByUserId: async (
-    userId
-  ) => {
+  getRidesByUserId: async (userId) => {
+    try {
+      const res = await apiFetch(`/api/rides/user/${userId}`);
+      if (Array.isArray(res)) return res;
+    } catch (e) {
+      console.warn("[Ride API] Gateway fetch notice for user rides, attempting fallback:", e);
+    }
 
-    return await apiFetch(
-      `/api/rides/user/${userId}`
-    );
+    try {
+      const directResp = await fetch(`http://localhost:8082/api/rides/user/${userId}`);
+      if (directResp.ok) {
+        const data = await directResp.json();
+        if (Array.isArray(data)) return data;
+      }
+    } catch (e) {}
+
+    try {
+      const allRides = await rideApi.getAllRides();
+      if (Array.isArray(allRides)) {
+        return allRides.filter((r) => String(r.userId || r.user_id) === String(userId));
+      }
+    } catch (e) {}
+
+    return [];
   },
 
 
