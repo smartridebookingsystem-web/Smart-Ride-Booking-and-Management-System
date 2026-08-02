@@ -7,18 +7,7 @@ export default function Navigation() {
 
   const [tripStage, setTripStage] = useState("EN_ROUTE_PICKUP"); // EN_ROUTE_PICKUP, ARRIVED, TRIP_STARTED, COMPLETED
 
-  const [activeTrip, setActiveTrip] = useState({
-    id: "RIDE-1093",
-    riderName: "Rahul Sharma",
-    phone: "+91 98765 43210",
-    pickup: "Sangli Railway Station, Gate 1",
-    destination: "Vishrambag Main Road, Sangli",
-    distance: "4.5 km",
-    estimatedTime: "12 Mins",
-    totalFare: "₹160",
-    paymentMode: "UPI",
-    vehicleNo: "MH14CD5678",
-  });
+  const [activeTrip, setActiveTrip] = useState(null);
 
   useEffect(() => {
     async function loadActiveTrip() {
@@ -28,7 +17,7 @@ export default function Navigation() {
           const current = rides[rides.length - 1];
           setActiveTrip({
             id: `RIDE-${current.rideId || current.id || 1093}`,
-            riderName: current.riderName || current.rider || `Rider #${current.userId || 4}`,
+            riderName: current.riderName || current.rider || `Rider #${current.userId}`,
             phone: "+91 98765 43210",
             pickup: current.source || "Sangli Railway Station, Gate 1",
             destination: current.destination || "Vishrambag Main Road, Sangli",
@@ -38,9 +27,12 @@ export default function Navigation() {
             paymentMode: current.paymentMode || "UPI",
             vehicleNo: "MH14CD5678",
           });
+        } else {
+          setActiveTrip(null);
         }
       } catch (err) {
         console.warn("Backend navigation sync:", err);
+        setActiveTrip(null);
       }
     }
     loadActiveTrip();
@@ -55,6 +47,23 @@ export default function Navigation() {
       navigate("/driver/complete-ride");
     }
   };
+
+  if (!activeTrip) {
+    return (
+      <div className="card border-0 shadow-sm p-5 text-center rounded-4">
+        <i className="bi bi-geo-alt text-secondary mb-2" style={{ fontSize: "3.5rem" }}></i>
+        <h5 className="fw-bold text-dark">No Active Route Navigation</h5>
+        <p className="text-secondary small mb-3">
+          You currently have no active trip route navigation in progress. Accept an incoming ride request to start GPS guidance.
+        </p>
+        <div>
+          <button className="btn btn-primary fw-semibold px-4 py-2 rounded-pill" onClick={() => navigate("/driver")}>
+            Go to Driver Control Center
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { rideApi } from "../services/api";
+import Table_Layout from "../../Auth/Table_Layout";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function MyBookings() {
   const { user } = useSelector((state) => state.auth || {});
-  const userId = user?.userId || user?.id || 3; // Default to rider Dhananjay (user_id 3) if not logged in
+  const userId = user?.userId || user?.id || 3;
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,18 +28,107 @@ export default function MyBookings() {
     }
   };
 
-  // Helper function to render status badges
-  const renderStatusBadge = (status) => {
-    if (status === 1 || status === "Completed") {
-      return <span className="badge bg-success px-3 py-2">Completed</span>;
+  const formatDate = (d) => {
+    if (!d) return "—";
+    try {
+      return new Date(d).toLocaleString("en-IN", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    } catch {
+      return d;
     }
-    if (status === 2 || status === "In Progress") {
-      return <span className="badge bg-warning text-dark px-3 py-2">In Progress</span>;
+  };
+
+  const getRideOtp = (rideId) => {
+    return sessionStorage.getItem(`otp_${rideId}`) || null;
+  };
+
+  const renderStatusBadge = (status, rideId) => {
+    const storedOtp = getRideOtp(rideId);
+    if (status === 1 || status === "Completed") {
+      return <span className="badge bg-success px-3 py-1.5">Completed</span>;
+    }
+    if (status === 2 || status === 3 || status === "In Progress") {
+      return (
+        <div className="d-flex flex-column align-items-start gap-1">
+          <span className="badge bg-warning text-dark px-3 py-1">In Progress</span>
+          {storedOtp && (
+            <span className="badge bg-dark text-warning border border-warning px-2 py-1 small font-monospace">
+              🔐 OTP: {storedOtp}
+            </span>
+          )}
+        </div>
+      );
     }
     if (status === 0 || status === "Cancelled") {
-      return <span className="badge bg-danger px-3 py-2">Cancelled</span>;
+      return <span className="badge bg-danger px-3 py-1.5">Cancelled</span>;
     }
-    return <span className="badge bg-secondary px-3 py-2">{status}</span>;
+    return <span className="badge bg-secondary px-3 py-1.5">{status}</span>;
+  };
+
+  const columns = [
+    { header: "Booking ID", field: "displayId" },
+    { header: "Date & Time", field: "formattedDate" },
+    { header: "Source (Pickup)", field: "pickupLocation" },
+    { header: "Destination (Drop)", field: "dropLocation" },
+    { header: "Fare", field: "fareDisplay" },
+    { header: "Status & OTP", field: "statusBadge" },
+  ];
+
+  const tableData = bookings.map((b) => ({
+    ...b,
+    displayId: <span className="fw-bold text-primary">RIDE-{b.rideId || b.id}</span>,
+    formattedDate: <span className="small text-muted">{formatDate(b.date || b.createdAt || b.bookingDate)}</span>,
+    pickupLocation: (
+      <div className="small fw-semibold text-dark">
+        <i className="bi bi-geo-alt-fill text-primary me-1"></i>
+        {b.source || b.pickup}
+      </div>
+    ),
+    dropLocation: (
+      <div className="small fw-semibold text-dark">
+        <i className="bi bi-pin-map-fill text-danger me-1"></i>
+        {b.destination}
+      </div>
+    ),
+    fareDisplay: (
+      <span className="fw-bold text-dark">
+        {typeof b.fare === "number" ? `₹${b.fare}` : b.fare || "₹250"}
+      </span>
+    ),
+    statusBadge: renderStatusBadge(b.status, b.rideId || b.id),
+  }));
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.setTextColor(255, 107, 0);
+    doc.text("SmartRide — My Ride Booking History", 14, 18);
+    doc.setFontSize(10);
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Exported on: ${new Date().toLocaleString("en-IN")}`, 14, 26);
+
+    const rows = bookings.map((b, idx) => [
+      idx + 1,
+      `RIDE-${b.rideId || b.id}`,
+      formatDate(b.date || b.createdAt || b.bookingDate),
+      b.source || b.pickup || "—",
+      b.destination || "—",
+      typeof b.fare === "number" ? `Rs.${b.fare}` : b.fare || "—",
+      b.status === 1 ? "Completed" : b.status === 2 || b.status === 3 ? "In Progress" : b.status === 0 ? "Cancelled" : String(b.status),
+    ]);
+
+    autoTable(doc, {
+      startY: 32,
+      head: [["#", "Booking ID", "Date & Time", "Pickup", "Destination", "Fare", "Status"]],
+      body: rows,
+      headStyles: { fillColor: [255, 107, 0], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [250, 250, 250] },
+      styles: { fontSize: 9, cellPadding: 4 },
+    });
+
+    doc.save(`SmartRide_Bookings_${Date.now()}.pdf`);
   };
 
   return (
@@ -46,11 +138,9 @@ export default function MyBookings() {
           <i className="bi bi-ticket-perforated-fill me-2" style={{ color: "#FF6B00" }}></i>
           My Ride Bookings
         </h5>
-        <div className="d-flex gap-2">
-          <button className="btn btn-outline-dark btn-sm rounded-pill px-3">
-            <i className="bi bi-download me-1"></i> Export PDF History
-          </button>
-        </div>
+        <button className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={handleExportPDF}>
+          <i className="bi bi-download me-1"></i> Export PDF History
+        </button>
       </div>
 
       {loading ? (
@@ -60,58 +150,12 @@ export default function MyBookings() {
           </div>
           <p className="text-muted mt-2">Loading ride history from database...</p>
         </div>
-      ) : bookings.length === 0 ? (
-        <div className="text-center py-5 text-muted">
-          <i className="bi bi-calendar-x fs-1 text-secondary mb-2 d-block"></i>
-          <h6>No ride bookings found in database for your account.</h6>
-        </div>
       ) : (
-        <div className="table-responsive">
-          <table className="table table-hover align-middle">
-            <thead className="table-light">
-              <tr>
-                <th>Booking ID</th>
-                <th>Date & Time</th>
-                <th>Source (Pickup)</th>
-                <th>Destination (Drop)</th>
-                <th>Driver / Vehicle</th>
-                <th>Fare</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.map((b) => (
-                <tr key={b.rideId || b.id}>
-                  <td className="fw-bold text-primary">RIDE-{b.rideId || b.id}</td>
-                  <td className="small text-muted">{b.date || "2026-07-02 22:37"}</td>
-                  <td>
-                    <div className="small fw-semibold text-dark">
-                      <i className="bi bi-geo-alt-fill text-primary me-1"></i>
-                      {b.source || b.pickup}
-                    </div>
-                  </td>
-                  <td>
-                    <div className="small fw-semibold text-dark">
-                      <i className="bi bi-pin-map-fill text-danger me-1"></i>
-                      {b.destination}
-                    </div>
-                  </td>
-                  <td className="small text-dark">
-                    {b.driverName || (b.driverId ? `Driver #${b.driverId}` : "Assigned Driver")}
-                  </td>
-                  <td className="fw-bold text-dark">
-                    {typeof b.fare === "number" ? `₹${b.fare}` : b.fare || "₹250"}
-                  </td>
-                  <td>{renderStatusBadge(b.status)}</td>
-                  <td>
-                    <button className="btn btn-sm btn-light border rounded-pill px-3">Details</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table_Layout
+          tableName="My Ride Booking History"
+          columns={columns}
+          data={tableData}
+        />
       )}
     </div>
   );

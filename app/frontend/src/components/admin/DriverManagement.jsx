@@ -12,7 +12,9 @@ export default function DriverManagement({ drivers, setDrivers, setSelectedRow, 
     { header: "Verification Status", field: "statusDisplay" },
   ];
 
-  const tableData = drivers.map((d) => ({
+  const activeDrivers = drivers.filter((d) => String(d.status || "").toLowerCase() !== "deactivated");
+
+  const tableData = activeDrivers.map((d) => ({
     ...d,
     docButton: d.licensePdfUrl ? (
       <button
@@ -26,21 +28,22 @@ export default function DriverManagement({ drivers, setDrivers, setSelectedRow, 
       <span className="badge bg-secondary">No File Uploaded</span>
     ),
     statusDisplay: (
-      <span className={`badge ${d.status === "Verified" || d.status === "active" ? "bg-success" : d.status === "Rejected" ? "bg-danger" : "bg-warning text-dark"} px-2 py-1`}>
+      <span className={`badge ${d.status === "Verified" || d.status === "active" ? "bg-success" : d.status === "Deactivated" || d.status === "Rejected" ? "bg-danger" : "bg-warning text-dark"} px-2 py-1`}>
         {d.status === "active" ? "Verified" : d.status}
       </span>
     ),
   }));
 
   const handleDelete = async (row) => {
-    if (window.confirm(`⚠️ Are you sure you want to permanently delete driver "${row.name}" from Database?`)) {
+    const dId = row.id || row.userId;
+    if (window.confirm(`⚠️ Are you sure you want to DEACTIVATE driver account "${row.name}"?`)) {
       try {
-        await authApi.deleteUser(row.id || row.userId);
-        setDrivers((prev) => prev.filter((d) => d.id !== row.id));
-        alert(`🗑️ Driver "${row.name}" deleted successfully!`);
+        await authApi.updateUser(dId, { status: "Deactivated" });
+        setDrivers((prev) => prev.map((d) => ((d.id || d.userId) === dId ? { ...d, status: "Deactivated" } : d)));
+        alert(`🚫 Driver account "${row.name}" has been DEACTIVATED! It has been moved to Deactivated Accounts.`);
       } catch (err) {
-        setDrivers((prev) => prev.filter((d) => d.id !== row.id));
-        alert(`🗑️ Driver "${row.name}" removed from view!`);
+        setDrivers((prev) => prev.map((d) => ((d.id || d.userId) === dId ? { ...d, status: "Deactivated" } : d)));
+        alert(`🚫 Driver account "${row.name}" has been DEACTIVATED!`);
       }
     }
   };

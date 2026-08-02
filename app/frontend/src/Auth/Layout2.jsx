@@ -182,7 +182,7 @@ export default function Layout() {
 
                 <li className="nav-item ms-lg-3 mt-3 mt-lg-0">
                   <NavLink
-                    to="/book-ride"
+                    to="/rider/search-ride"
                     className="btn btn-outline-primary"
                     onClick={closeNavbar}
                   >

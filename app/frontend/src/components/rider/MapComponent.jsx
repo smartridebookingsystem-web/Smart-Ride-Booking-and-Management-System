@@ -51,10 +51,9 @@ function ChangeMapView({ center }) {
   return null;
 }
 
-// ---------------- OpenRouteService Key ----------------
+// ---------------- OpenRouteService Key (from .env) ----------------
 
-const API_KEY =
-  "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjgwYTQ5ZTBhNmJiNjRjZTA4YzA4ZDg3YWM1ZmQzMDkxIiwiaCI6Im11cm11cjY0In0=";
+const API_KEY = import.meta.env.VITE_OPENROUTE_API_KEY;
 
 // ---------------- Select Location ----------------
 
@@ -103,6 +102,7 @@ export default function MapComponent({
   setDropName,
   selecting,
   onClose,
+  onRouteCalculated,
 }) {
   const [currentLocation, setCurrentLocation] = useState([
     18.5204,
@@ -110,30 +110,50 @@ export default function MapComponent({
   ]);
 
   const [route, setRoute] = useState([]);
-
   const [distance, setDistance] = useState("");
-
   const [duration, setDuration] = useState("");
-
   const [fare, setFare] = useState("");
 
   // ---------------- Current Location ----------------
 
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCurrentLocation([
-          position.coords.latitude,
-          position.coords.longitude,
-        ]);
-      },
-      () => {
-        console.log("Location Permission Denied");
-      }
-    );
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (position?.coords) {
+            setCurrentLocation([
+              position.coords.latitude,
+              position.coords.longitude,
+            ]);
+          }
+        },
+        () => {
+          // Graceful silent fallback to default Pune center when permission is denied or blocked
+          setCurrentLocation([18.5204, 73.8567]);
+        },
+        { timeout: 3000, maximumAge: 60000 }
+      );
+    }
   }, []);
 
-  // ---------------- Get Route ----------------
+  // ---------------- Haversine Distance Fallback ----------------
+  const calculateHaversineDistance = (p1, p2) => {
+    const rad = Math.PI / 180;
+    const dLat = (p2[0] - p1[0]) * rad;
+    const dLon = (p2[1] - p1[1]) * rad;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(p1[0] * rad) *
+        Math.cos(p2[0] * rad) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const straightKm = 6371 * c;
+    const roadKm = Number((straightKm * 1.25).toFixed(1)); // 25% road factor
+    return roadKm < 1 ? 1.5 : roadKm;
+  };
+
+  // ---------------- Get Route (OSRM & OpenRouteService ORS) ----------------
 
   useEffect(() => {
     if (pickup && drop) {
@@ -142,46 +162,87 @@ export default function MapComponent({
   }, [pickup, drop]);
 
   const getRoute = async () => {
+    if (!pickup || !drop) return;
+    
+    let km = calculateHaversineDistance(pickup, drop);
+    let min = Math.round(km * 2.5);
+    setRoute([[pickup[0], pickup[1]], [drop[0], drop[1]]]);
+
+    // 1. Try OSRM (Open Source Routing Machine) - Free, No API Key Required
     try {
-      const response = await axios.post(
-        "https://api.openrouteservice.org/v2/directions/driving-car/geojson",
-        {
-          coordinates: [
-            [pickup[1], pickup[0]],
-            [drop[1], drop[0]],
-          ],
-        },
-        {
-          headers: {
-            Authorization: API_KEY,
-            "Content-Type": "application/json",
-          },
+      console.log(`[OSRM Routing] 🚗 Fetching road geometry for Pickup (${pickup[0]}, ${pickup[1]}) → Drop (${drop[0]}, ${drop[1]})...`);
+      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${pickup[1]},${pickup[0]};${drop[1]},${drop[0]}?overview=full&geometries=geojson`;
+      const response = await axios.get(osrmUrl, { timeout: 6000 });
+
+      if (response.data?.routes?.[0]?.geometry?.coordinates) {
+        const coords = response.data.routes[0].geometry.coordinates;
+        const path = coords.map((c) => [c[1], c[0]]);
+        setRoute(path);
+
+        const routeData = response.data.routes[0];
+        km = Number((routeData.distance / 1000).toFixed(1));
+        min = Number((routeData.duration / 60).toFixed(0));
+        console.log(`[OSRM Routing] ✅ Road Polyline loaded (${coords.length} waypoints, ${km} km, ${min} mins)`);
+      }
+    } catch (osrmErr) {
+      console.warn("[OSRM Routing] OSRM primary failed, checking OpenRouteService (ORS):", osrmErr.message);
+
+      // 2. Try OpenRouteService (ORS) fallback if API key is provided
+      if (API_KEY) {
+        try {
+          const orsUrl = "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
+          const orsResp = await axios.post(
+            orsUrl,
+            {
+              coordinates: [
+                [pickup[1], pickup[0]],
+                [drop[1], drop[0]],
+              ],
+            },
+            {
+              headers: {
+                Authorization: API_KEY,
+                "Content-Type": "application/json",
+              },
+              timeout: 6000,
+            }
+          );
+
+          if (orsResp.data?.features?.[0]?.geometry?.coordinates) {
+            const coords = orsResp.data.features[0].geometry.coordinates;
+            const path = coords.map((c) => [c[1], c[0]]);
+            setRoute(path);
+
+            const summary = orsResp.data.features[0].properties.summary;
+            km = Number((summary.distance / 1000).toFixed(1));
+            min = Number((summary.duration / 60).toFixed(0));
+            console.log(`[ORS Routing] ✅ OpenRouteService Polyline loaded (${km} km, ${min} mins)`);
+          }
+        } catch (orsErr) {
+          console.warn("[ORS Routing] ORS fallback notice:", orsErr.message);
         }
-      );
+      }
+    }
 
-      const coords =
-        response.data.features[0].geometry.coordinates;
+    setDistance(km);
+    setDuration(min);
 
-      const path = coords.map((c) => [c[1], c[0]]);
+    const hatchbackFare = Math.round(50 + km * 12);
+    const sedanFare = Math.round(80 + km * 16);
+    const suvFare = Math.round(120 + km * 22);
 
-      setRoute(path);
+    setFare(sedanFare);
 
-      const summary =
-        response.data.features[0].properties.summary;
-
-      const km = (summary.distance / 1000).toFixed(2);
-
-      const min = (summary.duration / 60).toFixed(0);
-
-      setDistance(km);
-
-      setDuration(min);
-
-      const totalFare = 50 + km * 12;
-
-      setFare(totalFare.toFixed(0));
-    } catch (err) {
-      console.log(err);
+    if (typeof onRouteCalculated === "function") {
+      onRouteCalculated({
+        distanceKm: km,
+        durationMin: min,
+        fares: {
+          Hatchback: hatchbackFare,
+          Sedan: sedanFare,
+          SUV: suvFare,
+        },
+      });
     }
   };
 
@@ -245,29 +306,6 @@ export default function MapComponent({
           />
         )}
       </MapContainer>
-
-      {distance && (
-        <div className="card shadow mt-3 p-4">
-          <h4 className="mb-3">Ride Summary</h4>
-
-          <div className="row">
-            <div className="col-md-4">
-              <h6>Distance</h6>
-              <h5>{distance} km</h5>
-            </div>
-
-            <div className="col-md-4">
-              <h6>Duration</h6>
-              <h5>{duration} min</h5>
-            </div>
-
-            <div className="col-md-4">
-              <h6>Estimated Fare</h6>
-              <h5>₹ {fare}</h5>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

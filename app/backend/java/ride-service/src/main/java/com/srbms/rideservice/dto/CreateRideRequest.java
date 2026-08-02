@@ -1,3 +1,4 @@
+
 package com.srbms.rideservice.dto;
 
 import jakarta.validation.constraints.NotBlank;
@@ -17,9 +18,15 @@ public class CreateRideRequest {
     @NotBlank(message = "Destination location is required")
     private String destination;
 
-    public CreateRideRequest() {}
+    public CreateRideRequest() {
+    }
 
-    public CreateRideRequest(Integer userId, Integer vehicleId, String source, String destination) {
+    public CreateRideRequest(
+            Integer userId,
+            Integer vehicleId,
+            String source,
+            String destination) {
+
         this.userId = userId;
         this.vehicleId = vehicleId;
         this.source = source;
@@ -58,3 +65,4 @@ public class CreateRideRequest {
         this.destination = destination;
     }
 }
+

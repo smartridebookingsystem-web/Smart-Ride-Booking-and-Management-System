@@ -15,8 +15,8 @@ export default function RideManagement({ rides, setRides, setSelectedRow, setMod
   const tableData = rides.map((r) => ({
     ...r,
     statusBadge: (
-      <span className={`badge ${r.status === "Completed" ? "bg-success" : r.status === "In Progress" ? "bg-warning text-dark" : "bg-danger"}`}>
-        {r.status}
+      <span className={`badge ${r.status === 1 || r.status === "Completed" ? "bg-success" : r.status === 2 || r.status === "In Progress" ? "bg-warning text-dark" : "bg-danger"}`}>
+        {r.status === 1 ? "Completed" : r.status === 2 ? "Pending" : String(r.status || "Completed")}
       </span>
     ),
   }));

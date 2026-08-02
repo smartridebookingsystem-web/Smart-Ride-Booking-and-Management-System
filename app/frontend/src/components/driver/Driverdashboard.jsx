@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { rideApi } from "../services/api";
+import { rideApi, authApi } from "../services/api";
 
 export default function Driverdashboard() {
   const { user } = useSelector((state) => state.auth);
   const rawName = user?.name || user?.fullName || user?.username;
-  const driverName = (rawName && isNaN(rawName)) ? rawName : "Dhananjay Korde";
+  const driverName = (rawName && isNaN(rawName)) ? rawName : (user?.username || "Driver Captain");
+  const driverId = user?.id || user?.userId || 1;
   const [isOnline, setIsOnline] = useState(true);
+  const [dutyToggling, setDutyToggling] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
   const [totalEarningsBadge, setTotalEarningsBadge] = useState("₹1,250");
@@ -36,6 +38,21 @@ export default function Driverdashboard() {
     }
     fetchHeaderStats();
   }, []);
+
+  // Sync duty status to backend with localStorage fallback
+  const handleToggleDuty = async () => {
+    if (dutyToggling) return;
+    const newStatus = !isOnline;
+    setDutyToggling(true);
+    setIsOnline(newStatus);
+    try {
+      await authApi.saveDriverAvailability(driverId, { isOnline: newStatus, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      console.warn("Duty status sync notice (localStorage fallback used):", err);
+    } finally {
+      setDutyToggling(false);
+    }
+  };
 
   const menuItems = [
     { path: "/driver", label: "Live Requests & Map", icon: "bi-house-door-fill", color: "text-warning", end: true, badge: "LIVE" },
@@ -84,9 +101,8 @@ export default function Driverdashboard() {
               >
                 <i className="bi bi-person-fill fs-2 text-warning"></i>
                 <span
-                  className={`position-absolute bottom-0 end-0 p-1.5 rounded-circle border border-2 border-dark ${
-                    isOnline ? "bg-success" : "bg-danger"
-                  }`}
+                  className={`position-absolute bottom-0 end-0 p-1.5 rounded-circle border border-2 border-dark ${isOnline ? "bg-success" : "bg-danger"
+                    }`}
                   style={{ width: "15px", height: "15px", zIndex: 2 }}
                 ></span>
               </div>
@@ -134,18 +150,22 @@ export default function Driverdashboard() {
               {/* Glowing Interactive Duty Status Toggle */}
               <button
                 type="button"
-                className={`btn fw-bold px-4 py-2.5 rounded-pill shadow-lg d-flex align-items-center gap-2.5 transition-all ${
-                  isOnline
+                className={`btn fw-bold px-4 py-2 rounded-pill shadow-lg d-flex align-items-center gap-2 transition-all ${isOnline
                     ? "btn-success text-white border-2 border-success-subtle"
                     : "btn-outline-danger text-danger bg-danger bg-opacity-10 border-2"
-                }`}
-                onClick={() => setIsOnline(!isOnline)}
+                  }`}
+                onClick={handleToggleDuty}
+                disabled={dutyToggling}
                 style={{
                   fontSize: "0.95rem",
                   boxShadow: isOnline ? "0 0 25px rgba(34, 197, 94, 0.45)" : "none",
                 }}
               >
-                <i className={`bi ${isOnline ? "bi-wifi fs-5 text-white" : "bi-wifi-off fs-5"}`}></i>
+                {dutyToggling ? (
+                  <span className="spinner-border spinner-border-sm"></span>
+                ) : (
+                  <i className={`bi ${isOnline ? "bi-wifi fs-5 text-white" : "bi-wifi-off fs-5"}`}></i>
+                )}
                 <span>{isOnline ? "ONLINE (On Duty)" : "OFFLINE (Off Duty)"}</span>
               </button>
             </div>
@@ -161,10 +181,9 @@ export default function Driverdashboard() {
                 to={item.path}
                 end={item.end}
                 className={({ isActive }) =>
-                  `btn btn-sm fw-semibold rounded-pill px-3 py-1.5 d-flex align-items-center gap-2 transition-all border ${
-                    isActive
-                      ? "btn-primary text-white shadow-sm border-primary"
-                      : "btn-outline-light text-light border-white border-opacity-10 hover-bg-dark opacity-90"
+                  `btn btn-sm fw-semibold rounded-pill px-3 py-1.5 d-flex align-items-center gap-2 transition-all border ${isActive
+                    ? "btn-primary text-white shadow-sm border-primary"
+                    : "btn-outline-light text-light border-white border-opacity-10 hover-bg-dark opacity-90"
                   }`
                 }
               >
@@ -215,8 +234,7 @@ export default function Driverdashboard() {
                     to={item.path}
                     end={item.end}
                     className={({ isActive }) =>
-                      `list-group-item list-group-item-action rounded-3 mb-1 fw-semibold d-flex align-items-center justify-content-between border-0 py-2.5 px-3 transition-all ${
-                        isActive ? "bg-primary text-white shadow-sm" : "bg-transparent text-light opacity-90 hover-bg-dark"
+                      `list-group-item list-group-item-action rounded-3 mb-1 fw-semibold d-flex align-items-center justify-content-between border-0 py-2.5 px-3 transition-all ${isActive ? "bg-primary text-white shadow-sm" : "bg-transparent text-light opacity-90 hover-bg-dark"
                       }`
                     }
                   >

@@ -5,7 +5,7 @@ import Sidebar from "./Sidebar";
 
 export default function RiderDashboard() {
   const { user } = useSelector((state) => state.auth || {});
-  const username = user?.username.toUpperCase() || "Rider Member";
+  const username = user?.username?.toUpperCase() || "Rider";
   const location = useLocation();
 
   // Map path to page title

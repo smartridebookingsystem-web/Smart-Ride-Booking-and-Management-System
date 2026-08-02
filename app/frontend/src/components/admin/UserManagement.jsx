@@ -12,25 +12,27 @@ export default function UserManagement({ users, setUsers, setSelectedRow, setMod
     { header: "Status", field: "statusBadge" },
   ];
 
-  const tableData = users.map((u) => ({
+  const activeUsers = users.filter((u) => String(u.status || "").toLowerCase() !== "deactivated");
+
+  const tableData = activeUsers.map((u) => ({
     ...u,
     statusBadge: (
-      <span className={`badge ${String(u.status || "").toLowerCase() === "active" ? "bg-success" : "bg-danger"} px-2 py-1`}>
-        {String(u.status || "").toLowerCase() === "active" ? "Active" : "Inactive"}
+      <span className={`badge ${String(u.status || "").toLowerCase() === "deactivated" ? "bg-danger" : "bg-success"} px-2 py-1`}>
+        {u.status || "Active"}
       </span>
     ),
   }));
 
   const handleDelete = async (row) => {
     const uId = row.userId || row.id;
-    if (window.confirm(`⚠️ Are you sure you want to delete user "${row.username || row.name}" from Database?`)) {
+    if (window.confirm(`⚠️ Are you sure you want to DEACTIVATE user "${row.username || row.name}"?`)) {
       try {
-        await authApi.deleteUser(uId);
-        setUsers((prev) => prev.filter((u) => (u.userId || u.id) !== uId));
-        alert(`🗑️ User "${row.username || row.name}" deleted successfully!`);
+        await authApi.updateUser(uId, { status: "Deactivated" });
+        setUsers((prev) => prev.map((u) => ((u.userId || u.id) === uId ? { ...u, status: "Deactivated" } : u)));
+        alert(`🚫 User account "${row.username || row.name}" has been DEACTIVATED! It has been moved to Deactivated Accounts.`);
       } catch (err) {
-        setUsers((prev) => prev.filter((u) => (u.userId || u.id) !== uId));
-        alert(`🗑️ User record removed from view!`);
+        setUsers((prev) => prev.map((u) => ((u.userId || u.id) === uId ? { ...u, status: "Deactivated" } : u)));
+        alert(`🚫 User account "${row.username || row.name}" has been DEACTIVATED!`);
       }
     }
   };

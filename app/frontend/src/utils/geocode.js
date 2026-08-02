@@ -1,44 +1,59 @@
 import axios from "axios";
 
-// Famous Pune Locations with predefined coordinates
-export const PUNE_POPULAR_LOCATIONS = [
+// Famous Maharashtra Locations with predefined coordinates (Pune, Mumbai, Sangli, Kolhapur, Nashik, Nagpur)
+export const MAHARASHTRA_POPULAR_LOCATIONS = [
+  // Pune Region
   { name: "Pune Railway Station, Agarkar Nagar, Pune", lat: 18.5289, lng: 73.8744 },
   { name: "Pune Airport (PNQ), Lohegaon, Pune", lat: 18.5793, lng: 73.9089 },
   { name: "Hinjewadi Phase 1 (IT Park), Pune", lat: 18.5912, lng: 73.7389 },
-  { name: "Hinjewadi Phase 2 (Quadron), Pune", lat: 18.5984, lng: 73.7225 },
-  { name: "Hinjewadi Phase 3 (Tech Mahindra), Pune", lat: 18.5835, lng: 73.7028 },
   { name: "Kothrud Stand / Paud Road, Pune", lat: 18.5074, lng: 73.8077 },
   { name: "Viman Nagar (Phoenix Marketcity), Pune", lat: 18.5679, lng: 73.9143 },
   { name: "FC Road, Shivajinagar, Pune", lat: 18.5236, lng: 73.8415 },
-  { name: "Baner Road / High Street, Pune", lat: 18.5590, lng: 73.7868 },
-  { name: "Wakad Chowk, Pune", lat: 18.5987, lng: 73.7629 },
-  { name: "Aundh Main Road, Pune", lat: 18.5580, lng: 73.8075 },
   { name: "Hadapsar Magarpatta City, Pune", lat: 18.5158, lng: 73.9272 },
   { name: "Swargate Bus Stand, Pune", lat: 18.5018, lng: 73.8636 },
-  { name: "Katraj Snake Park / Stand, Pune", lat: 18.4575, lng: 73.8584 },
-  { name: "Koregaon Park / Lane 6, Pune", lat: 18.5362, lng: 73.8940 },
-  { name: "Kalyani Nagar, Pune", lat: 18.5463, lng: 73.9033 },
-  { name: "Deccan Gymkhana, Pune", lat: 18.5167, lng: 73.8417 },
-  { name: "MG Road, Camp, Pune", lat: 18.5162, lng: 73.8784 },
-  { name: "Karve Nagar, Pune", lat: 18.4950, lng: 73.8180 },
-  { name: "Bavdhan Main Road, Pune", lat: 18.5100, lng: 73.7700 },
+
+  // Mumbai & Thane Region
+  { name: "Chhatrapati Shivaji Maharaj Terminus (CSMT), Mumbai", lat: 18.9398, lng: 72.8355 },
+  { name: "Mumbai International Airport (BOM), Andheri, Mumbai", lat: 19.0896, lng: 72.8656 },
+  { name: "Bandra Kurla Complex (BKC), Mumbai", lat: 19.0657, lng: 72.8680 },
+  { name: "Thane Railway Station, Thane West", lat: 19.1860, lng: 72.9759 },
+  { name: "Navi Mumbai Vashi Station, Navi Mumbai", lat: 19.0644, lng: 72.9980 },
+
+  // Sangli & Kolhapur Region
+  { name: "Sangli Railway Station, Vishrambag, Sangli", lat: 16.8524, lng: 74.5815 },
+  { name: "Sangli Central Bus Stand, Sangli", lat: 16.8570, lng: 74.5642 },
+  { name: "VPIMSR College, Wanlesswadi, Sangli", lat: 16.8421, lng: 74.6012 },
+  { name: "Kolhapur Mahalaxmi Temple, Kolhapur", lat: 16.6956, lng: 74.2223 },
+  { name: "Kolhapur Central Bus Stand (CBS), Kolhapur", lat: 16.7050, lng: 74.2433 },
+
+  // Nashik & Chhatrapati Sambhajinagar (Aurangabad)
+  { name: "Nashik Road Railway Station, Nashik", lat: 19.9535, lng: 73.8340 },
+  { name: "Panchavati, Nashik", lat: 20.0063, lng: 73.7963 },
+  { name: "Chhatrapati Sambhajinagar Central, Aurangabad", lat: 19.8762, lng: 75.3433 },
+
+  // Nagpur & Solapur
+  { name: "Nagpur Junction Railway Station, Nagpur", lat: 21.1524, lng: 79.0888 },
+  { name: "Solapur Central Railway Station, Solapur", lat: 17.6599, lng: 75.9064 },
 ];
 
-// Search Pune locations via OpenStreetMap Nominatim with fallback to popular list
-export const searchPuneLocations = async (query) => {
+// Alias export for backward compatibility
+export const PUNE_POPULAR_LOCATIONS = MAHARASHTRA_POPULAR_LOCATIONS;
+
+// Search Maharashtra locations via OpenStreetMap Nominatim with fallback to popular list
+export const searchMaharashtraLocations = async (query) => {
   if (!query || query.trim().length < 2) return [];
 
   const lower = query.toLowerCase().trim();
 
   // 1. Search popular locations list first
-  const popularMatches = PUNE_POPULAR_LOCATIONS.filter((loc) =>
+  const popularMatches = MAHARASHTRA_POPULAR_LOCATIONS.filter((loc) =>
     loc.name.toLowerCase().includes(lower)
   );
 
-  // 2. Fetch live Nominatim suggestions bounded to Pune region
+  // 2. Fetch live Nominatim suggestions bounded to Maharashtra region, India
   try {
     const response = await axios.get(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Pune, Maharashtra")}&limit=5`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Maharashtra, India")}&limit=5`
     );
 
     if (response.data && Array.isArray(response.data)) {
@@ -64,11 +79,14 @@ export const searchPuneLocations = async (query) => {
       return unique.slice(0, 6);
     }
   } catch (error) {
-    console.error("Pune location search error:", error);
+    console.error("Maharashtra location search error:", error);
   }
 
   return popularMatches.slice(0, 6);
 };
+
+// Backward compatibility alias
+export const searchPuneLocations = searchMaharashtraLocations;
 
 // Helper function to get place name from Latitude & Longitude using OpenStreetMap (Nominatim)
 export const getPlaceName = async (lat, lng) => {

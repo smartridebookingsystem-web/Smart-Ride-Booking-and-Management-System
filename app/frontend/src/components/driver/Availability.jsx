@@ -118,13 +118,24 @@ export default function Availability() {
               </div>
 
               <div className="mb-3">
-                <label className="form-label fw-semibold">Operating Zone / City</label>
-                <input
-                  type="text"
-                  className="form-control"
+                <label className="form-label fw-semibold">Operating District / City Zone</label>
+                <select
+                  className="form-select"
                   value={schedule.operatingZone}
-                  onChange={(e) => setSchedule({ ...schedule, operatingZone: e.target.value })}
-                />
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSchedule({ ...schedule, operatingZone: val });
+                    localStorage.setItem("driver_district", val);
+                  }}
+                >
+                  <option value="Pune">Pune District &amp; Metropolitan Area</option>
+                  <option value="Sangli">Sangli District (Sangli, Miraj, Kupwad)</option>
+                  <option value="Mumbai">Mumbai &amp; Thane Region</option>
+                  <option value="Kolhapur">Kolhapur District</option>
+                  <option value="Nashik">Nashik District</option>
+                  <option value="Nagpur">Nagpur District</option>
+                  <option value="All Maharashtra">All Maharashtra State (Intercity)</option>
+                </select>
               </div>
 
               <div>

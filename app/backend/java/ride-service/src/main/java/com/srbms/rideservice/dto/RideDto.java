@@ -1,6 +1,8 @@
+
 package com.srbms.rideservice.dto;
 
 public class RideDto {
+
     private Integer rideId;
     private Integer userId;
     private Integer vehicleId;
@@ -9,9 +11,18 @@ public class RideDto {
     private Integer status;
     private Integer driverId;
 
-    public RideDto() {}
+    public RideDto() {
+    }
 
-    public RideDto(Integer rideId, Integer userId, Integer vehicleId, String source, String destination, Integer status, Integer driverId) {
+    public RideDto(
+            Integer rideId,
+            Integer userId,
+            Integer vehicleId,
+            String source,
+            String destination,
+            Integer status,
+            Integer driverId) {
+
         this.rideId = rideId;
         this.userId = userId;
         this.vehicleId = vehicleId;
@@ -77,3 +88,4 @@ public class RideDto {
         this.driverId = driverId;
     }
 }
+

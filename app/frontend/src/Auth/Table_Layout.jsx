@@ -25,21 +25,45 @@ export default function CustomTable({
     setCurrentPage(1);
   };
 
+  const extractPlainText = (val) => {
+    if (val === null || val === undefined) return "";
+    if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") {
+      return String(val);
+    }
+    if (React.isValidElement(val)) {
+      return extractTextFromNode(val);
+    }
+    if (typeof val === "object") {
+      return Object.values(val).map(extractPlainText).join(" ");
+    }
+    return String(val);
+  };
+
+  const extractTextFromNode = (node) => {
+    if (!node) return "";
+    if (typeof node === "string" || typeof node === "number") return String(node);
+    if (Array.isArray(node)) return node.map(extractTextFromNode).join(" ");
+    if (node.props && node.props.children) {
+      return extractTextFromNode(node.props.children);
+    }
+    return "";
+  };
+
   const filteredData = useMemo(() => {
     return data.filter((row) => {
-      const globalMatch = Object.values(row)
+      const globalRowText = Object.values(row)
+        .map(extractPlainText)
         .join(" ")
-        .toLowerCase()
-        .includes(search.toLowerCase());
+        .toLowerCase();
+
+      const globalMatch = !search || globalRowText.includes(search.toLowerCase());
 
       const columnMatch = columns.every((col) => {
         const filterValue = columnFilters[col.field]?.toLowerCase() || "";
-
         if (!filterValue) return true;
 
-        return String(row[col.field] || "")
-          .toLowerCase()
-          .includes(filterValue);
+        const cellText = extractPlainText(row[col.field]).toLowerCase();
+        return cellText.includes(filterValue);
       });
 
       return globalMatch && columnMatch;
@@ -51,13 +75,11 @@ export default function CustomTable({
 
     if (sortField) {
       sortable.sort((a, b) => {
-        const aVal = a[sortField];
-        const bVal = b[sortField];
+        const aVal = extractPlainText(a[sortField]).toLowerCase();
+        const bVal = extractPlainText(b[sortField]).toLowerCase();
 
         if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
-
         if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
-
         return 0;
       });
     }
@@ -93,11 +115,7 @@ export default function CustomTable({
     const tableBody = exportRows.map((row, idx) =>
       columns.map((col) => {
         const val = row[col.field];
-        if (typeof val === "object" && val !== null && val.props) {
-          // Flatten JSX or badge elements to plain text if needed
-          return String(row.status || row[col.field] || "");
-        }
-        return val !== undefined && val !== null ? String(val) : "";
+        return extractPlainText(val);
       })
     );
 
@@ -143,6 +161,8 @@ export default function CustomTable({
     }
     generatePdfReport(data, `${tableName} - Complete Dataset (${data.length} Records)`);
   };
+
+  const hasActions = Boolean(onView || onEdit || onDelete);
 
   return (
     <div className="card shadow-sm">
@@ -252,7 +272,7 @@ export default function CustomTable({
                 </th>
               ))}
 
-              <th style={{ width: "180px" }}>Actions</th>
+              {hasActions && <th style={{ width: "180px" }}>Actions</th>}
             </tr>
 
             {/* Column Search Row */}
@@ -273,7 +293,7 @@ export default function CustomTable({
                 </th>
               ))}
 
-              <th></th>
+              {hasActions && <th></th>}
             </tr>
           </thead>
 
@@ -287,42 +307,44 @@ export default function CustomTable({
                     <td key={col.field}>{row[col.field]}</td>
                   ))}
 
-                  <td className="text-nowrap">
-                    {onView && (
-                      <button
-                        className="btn btn-outline-primary btn-sm px-2 py-1 me-1 shadow-sm"
-                        title="View Document & Details"
-                        onClick={() => onView(row)}
-                      >
-                        <i className="bi bi-eye-fill fs-6"></i>
-                      </button>
-                    )}
+                  {hasActions && (
+                    <td className="text-nowrap">
+                      {onView && (
+                        <button
+                          className="btn btn-outline-primary btn-sm px-2 py-1 me-1 shadow-sm"
+                          title="View Details"
+                          onClick={() => onView(row)}
+                        >
+                          <i className="bi bi-eye-fill fs-6"></i>
+                        </button>
+                      )}
 
-                    {onEdit && (
-                      <button
-                        className="btn btn-outline-warning text-dark btn-sm px-2 py-1 me-1 shadow-sm"
-                        title="Edit Verification Status"
-                        onClick={() => onEdit(row)}
-                      >
-                        <i className="bi bi-pencil-square fs-6"></i>
-                      </button>
-                    )}
+                      {onEdit && (
+                        <button
+                          className="btn btn-outline-warning text-dark btn-sm px-2 py-1 me-1 shadow-sm"
+                          title="Edit Record"
+                          onClick={() => onEdit(row)}
+                        >
+                          <i className="bi bi-pencil-square fs-6"></i>
+                        </button>
+                      )}
 
-                    {onDelete && (
-                      <button
-                        className="btn btn-outline-danger btn-sm px-2 py-1 shadow-sm"
-                        title="Delete Driver Record from Database"
-                        onClick={() => onDelete(row)}
-                      >
-                        <i className="bi bi-trash-fill fs-6"></i>
-                      </button>
-                    )}
-                  </td>
+                      {onDelete && (
+                        <button
+                          className="btn btn-outline-danger btn-sm px-2 py-1 shadow-sm"
+                          title="Delete Record"
+                          onClick={() => onDelete(row)}
+                        >
+                          <i className="bi bi-trash-fill fs-6"></i>
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={columns.length + 2} className="text-center">
+                <td colSpan={hasActions ? columns.length + 2 : columns.length + 1} className="text-center py-4">
                   No Records Found
                 </td>
               </tr>

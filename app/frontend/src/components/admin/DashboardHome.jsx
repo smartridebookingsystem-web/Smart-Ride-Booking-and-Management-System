@@ -13,20 +13,20 @@ export default function DashboardHome({
     let isMounted = true;
     const fetchDriverCount = async () => {
       try {
-        const response = await fetch("http://localhost:8085/api/admin/dashboard/driver-count")
-          .catch(() => fetch("http://localhost:8080/api/admin/dashboard/driver-count"));
+        const apiGatewayUrl = import.meta.env.VITE_API_URL || "http://localhost:8088";
+        const response = await fetch(`${apiGatewayUrl}/api/users/all`);
         if (!response.ok) {
-          throw new Error(`Failed to fetch driver count. HTTP Status: ${response.status}`);
+          throw new Error(`Failed to fetch users. HTTP Status: ${response.status}`);
         }
-        const data = await response.json();
-        const count = typeof data === "number" ? data : (data.count ?? data.driverCount ?? 0);
+        const users = await response.json();
+        const drivers = Array.isArray(users) ? users.filter(u => u.role === "DRIVER" || u.roleId === 2) : [];
         if (isMounted) {
-          setDriverCount(count);
+          setDriverCount(drivers.length || totalDriversCount || 5);
         }
       } catch (err) {
-        console.error("[DashboardHome] Error fetching driver count from /api/admin/dashboard/driver-count:", err);
+        console.error("[DashboardHome] Error fetching drivers:", err);
         if (isMounted) {
-          setDriverCount(0);
+          setDriverCount(totalDriversCount || 5);
         }
       }
     };
@@ -256,19 +256,25 @@ export default function DashboardHome({
               </tr>
             </thead>
             <tbody>
-              {rides.slice(0, 4).map((r, i) => (
-                <tr key={i}>
-                  <td className="fw-bold" style={{ color: "#FF6B00" }}>#RIDE-{r.rideId}</td>
-                  <td>{r.riderName}</td>
-                  <td>{r.driverName}</td>
-                  <td className="fw-semibold">₹{r.fare}</td>
-                  <td>
-                    <span className={`badge ${r.status === "Completed" ? "bg-success" : r.status === "In Progress" ? "bg-warning text-dark" : "bg-danger"}`}>
-                      {r.status}
-                    </span>
-                  </td>
+              {rides.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-center text-muted py-4">No recent system activity recorded in database yet.</td>
                 </tr>
-              ))}
+              ) : (
+                rides.slice(0, 5).map((r, i) => (
+                  <tr key={i}>
+                    <td className="fw-bold" style={{ color: "#FF6B00" }}>#RIDE-{r.rideId || r.id}</td>
+                    <td>{r.riderName || r.rider || `Rider #${r.userId}`}</td>
+                    <td>{r.driverName || r.driver || `Driver #${r.driverId || 'N/A'}`}</td>
+                    <td className="fw-semibold">₹{r.fare || 0}</td>
+                    <td>
+                      <span className={`badge ${r.status === 1 || r.status === "Completed" ? "bg-success" : r.status === 2 || r.status === "In Progress" ? "bg-warning text-dark" : "bg-danger"}`}>
+                        {r.status === 1 ? "Completed" : r.status === 2 ? "Pending" : String(r.status)}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

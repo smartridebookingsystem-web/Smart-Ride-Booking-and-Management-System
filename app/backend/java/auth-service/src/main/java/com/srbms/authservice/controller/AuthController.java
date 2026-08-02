@@ -107,12 +107,13 @@ public class AuthController {
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
         try {
             String phone = body.get("phone");
+            boolean isTripOtp = Boolean.TRUE.toString().equalsIgnoreCase(body.get("isTripOtp")) || body.containsKey("isTripOtp");
             if (phone == null || phone.isBlank()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Phone number is required."));
             }
 
             String cleanPhone = phone.replaceAll("^\\+91", "").replaceAll("[^0-9]", "");
-            if (userRepository.existsByPhone(cleanPhone) || userRepository.existsByPhone("+91" + cleanPhone)) {
+            if (!isTripOtp && (userRepository.existsByPhone(cleanPhone) || userRepository.existsByPhone("+91" + cleanPhone))) {
                 return ResponseEntity.badRequest().body(Map.of("error", "This mobile number is already registered! Please use a different number or login."));
             }
 

@@ -1,347 +1,1186 @@
+
 // src/components/services/api.js
+
 import { uploadToFirebaseStorage } from "../../config/firebase.js";
 
-const API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8088";
+
+/*
+ * ============================================================
+ * COMMON API LOGGING
+ * ============================================================
+ */
+
+const logRequest = (method, url, payload) => {
+  console.log(
+    `%c[API REQUEST] 🚀 ${method} ${url}`,
+    "color: #3b82f6; font-weight: bold;",
+    payload ? { payload } : ""
+  );
+};
+
+const logResponse = (method, url, status, data) => {
+  console.log(
+    `%c[API RESPONSE] ✅ ${status} ${method} ${url}`,
+    "color: #10b981; font-weight: bold;",
+    {
+      response: data,
+    }
+  );
+};
+
+const logError = (method, url, status, error) => {
+  console.error(
+    `[API ERROR] ❌ ${status} ${method} ${url}`,
+    {
+      error,
+    }
+  );
+};
+
+/*
+ * ============================================================
+ * COMMON FETCH FUNCTION
+ * ============================================================
+ */
+
+const apiFetch = async (
+  endpoint,
+  options = {}
+) => {
+  const method =
+    options.method || "GET";
+
+  const url =
+    endpoint.startsWith("http")
+      ? endpoint
+      : `${API_BASE_URL}${endpoint}`;
+
+  let payload = null;
+
+  if (options.body) {
+    try {
+      payload = JSON.parse(options.body);
+    } catch {
+      payload = options.body;
+    }
+  }
+
+  logRequest(
+    method,
+    url,
+    payload
+  );
+
+  try {
+    const response = await fetch(
+      url,
+      options
+    );
+
+    const contentType =
+      response.headers.get(
+        "content-type"
+      );
+
+    let data;
+
+    /*
+     * Parse JSON response.
+     */
+    if (
+      contentType &&
+      contentType.includes(
+        "application/json"
+      )
+    ) {
+      data = await response
+        .json()
+        .catch(() => ({}));
+    } else {
+      /*
+       * Parse non-JSON response.
+       */
+      const text =
+        await response
+          .text()
+          .catch(() => "");
+
+      data = text
+        ? {
+          text,
+        }
+        : {};
+    }
+
+    /*
+     * Handle HTTP errors.
+     */
+    if (!response.ok) {
+      logError(
+        method,
+        url,
+        response.status,
+        data
+      );
+
+      /*
+       * Try to provide the actual
+       * Spring Boot validation error.
+       */
+      let errorMessage =
+        data?.message ||
+        data?.error ||
+        data?.detail ||
+        data?.text;
+
+      /*
+       * Spring validation can sometimes
+       * return validation errors in
+       * different structures.
+       */
+      if (
+        !errorMessage &&
+        data?.errors
+      ) {
+        if (
+          Array.isArray(
+            data.errors
+          )
+        ) {
+          errorMessage =
+            data.errors
+              .map(
+                (item) =>
+                  item.defaultMessage ||
+                  item.message ||
+                  String(item)
+              )
+              .join(", ");
+        } else if (
+          typeof data.errors ===
+          "object"
+        ) {
+          errorMessage =
+            Object.entries(
+              data.errors
+            )
+              .map(
+                ([field, message]) =>
+                  `${field}: ${message}`
+              )
+              .join(", ");
+        }
+      }
+
+      const error = new Error(
+        errorMessage ||
+        `HTTP ${response.status} Request Failed`
+      );
+
+      /*
+       * Keep useful information
+       * available to the caller.
+       */
+      error.status =
+        response.status;
+
+      error.data = data;
+
+      throw error;
+    }
+
+    logResponse(
+      method,
+      url,
+      response.status,
+      data
+    );
+
+    return data;
+
+  } catch (error) {
+
+    /*
+     * Don't duplicate FETCH_ERROR
+     * for errors that already came
+     * from the HTTP validation block.
+     */
+    if (
+      error?.status
+    ) {
+      console.error(
+        `[API ERROR] ❌ HTTP ${error.status} ${method} ${url}`,
+        error.data || error.message
+      );
+    } else {
+      logError(
+        method,
+        url,
+        "FETCH_ERROR",
+        error?.message || error
+      );
+    }
+
+    throw error;
+  }
+};
+
+
+/*
+ * ============================================================
+ * AUTH API
+ * ============================================================
+ */
 
 export const authApi = {
-  // Login via Spring Boot API Gateway (Auth Service)
-  login: async (emailOrUsername, password) => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ emailOrUsername, password }),
-    });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Login failed. Please check credentials.");
+  /*
+   * Login
+   */
+  login: async (
+    emailOrUsername,
+    password
+  ) => {
+
+    return await apiFetch(
+      "/api/auth/login",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify({
+          emailOrUsername,
+          password,
+        }),
+      }
+    );
+  },
+
+
+  /*
+   * Register
+   */
+  register: async (
+    userData
+  ) => {
+
+    return await apiFetch(
+      "/api/auth/register",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify({
+          username:
+            userData.username,
+
+          email:
+            userData.email,
+
+          password:
+            userData.password,
+
+          phone:
+            userData.phone,
+
+          dob:
+            userData.dob,
+
+          gender:
+            userData.gender,
+
+          role:
+            userData.role,
+
+          profileImage:
+            userData.profile_image ||
+            userData.profilePhotoUrl ||
+            "default.jpg",
+
+          licenseNo:
+            userData.license_no ||
+            userData.licenseNumber ||
+            null,
+
+          licensePdfUrl:
+            userData.licensePdfUrl ||
+            null,
+        }),
+      }
+    );
+  },
+
+
+  /*
+   * Get current user profile.
+   */
+  getProfile: async (
+    token
+  ) => {
+
+    const jwtToken =
+      token ||
+      localStorage.getItem(
+        "jwtToken"
+      );
+
+    return await apiFetch(
+      "/api/users/profile",
+      {
+        method: "GET",
+
+        headers: {
+          Authorization:
+            `Bearer ${jwtToken}`,
+
+          "Content-Type":
+            "application/json",
+        },
+      }
+    );
+  },
+
+
+  /*
+   * Firebase file upload.
+   */
+  uploadFile: async (
+    file,
+    folderName = "profiles"
+  ) => {
+
+    console.log(
+      `[Firebase Upload] Uploading file ${file?.name} to folder ${folderName}...`
+    );
+
+    return await uploadToFirebaseStorage(
+      file,
+      folderName
+    );
+  },
+
+
+  /*
+   * Driver license validation.
+   */
+  validateDriverLicense: async (
+    licenseNo,
+    licensePdfUrl
+  ) => {
+
+    console.log(
+      `[License Verifier] Checking format for license: ${licenseNo}`
+    );
+
+    if (
+      !licenseNo ||
+      licenseNo.trim().length < 5
+    ) {
+      return {
+        valid: false,
+        message:
+          "License number must be at least 5 characters long.",
+      };
     }
 
-    return await response.json();
-  },
-
-  // Register via Spring Boot API Gateway (Auth Service)
-  register: async (userData) => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username: userData.username,
-        email: userData.email,
-        password: userData.password,
-        phone: userData.phone,
-        dob: userData.dob,
-        gender: userData.gender,
-        role: userData.role,
-        profileImage: userData.profile_image || userData.profilePhotoUrl || "default.jpg",
-        licenseNo: userData.license_no || userData.licenseNumber || null,
-        licensePdfUrl: userData.licensePdfUrl || null,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Registration failed. Please check input.");
-    }
-
-    return await response.json();
-  },
-
-  // Fetch current user profile with JWT token
-  getProfile: async (token) => {
-    const jwtToken = token || localStorage.getItem("jwtToken");
-    const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${jwtToken}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch user profile");
-    }
-
-    return await response.json();
-  },
-
-  // Firebase Storage File Uploader for Profile Photo & Driver License PDF
-  uploadFile: async (file, folderName = "profiles") => {
-    return await uploadToFirebaseStorage(file, folderName);
-  },
-
-  // Driver License Format & Document Verification Helper (Manual Admin Verification)
-  validateDriverLicense: async (licenseNo, licensePdfUrl) => {
-    console.log(`[License Verifier] Checking format for license: ${licenseNo}`);
-    if (!licenseNo || licenseNo.trim().length < 5) {
-      return { valid: false, message: "License number must be at least 5 characters long." };
-    }
-    return { valid: true, message: "Driver license document submitted for manual Admin verification." };
-  },
-
-  // OTP Verification via Fast2SMS (backend: /api/auth/send-otp)
-  sendOtp: async (phone) => {
-    const cleanPhone = phone.replace(/^\+91/, "").replace(/[^0-9]/g, "");
-    console.log(`[Fast2SMS] Sending real OTP SMS to +91${cleanPhone} via backend...`);
-
-    const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: cleanPhone }),
-    });
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.error || "Failed to send OTP. Please try again.");
-    }
-    return data; // { success: true, message: "OTP sent successfully to +91..." }
-  },
-
-  // OTP Verification via backend: /api/auth/verify-otp
-  verifyOtp: async (phone, otp) => {
-    const cleanPhone = phone.replace(/^\+91/, "").replace(/[^0-9]/g, "");
-    console.log(`[Fast2SMS] Verifying OTP ${otp} for +91${cleanPhone} via backend...`);
-
-    const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: cleanPhone, otp }),
-    });
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.error || "OTP verification failed.");
-    }
-    return data; // { success: true, message: "Mobile number verified successfully!" }
-  },
-
-  // Pre-verification availability check
-  checkAvailability: async (params) => {
-    try {
-      const query = new URLSearchParams(params).toString();
-      const response = await fetch(`${API_BASE_URL}/api/auth/check-availability?${query}`);
-      if (!response.ok) return { phoneExists: false, emailExists: false, usernameExists: false, licenseExists: false };
-      return await response.json();
-    } catch (e) {
-      return { phoneExists: false, emailExists: false, usernameExists: false, licenseExists: false };
-    }
-  },
-
-  // Fetch all users/drivers for Admin Dashboard
-  getAllUsers: async () => {
-    const response = await fetch(`${API_BASE_URL}/api/users/all`);
-    if (!response.ok) throw new Error("Failed to fetch users");
-    return await response.json();
-  },
-
-  // Update user/driver status in DB
-  updateUserStatus: async (userId, status) => {
-    const response = await fetch(`${API_BASE_URL}/api/users/${userId}/status`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "Failed to update status in database.");
-    return data;
-  },
-
-  // Update any user/driver fields in DB
-  updateUser: async (userId, updatedFields) => {
-    const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatedFields),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "Failed to update record in database.");
-    return data;
-  },
-
-  // Delete user/driver record from DB
-  deleteUser: async (userId) => {
-    const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
-      method: "DELETE",
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "Failed to delete user record from database.");
-    return data;
-  },
-
-  getSignedUrl: async (fileName) => {
     return {
-      uploadUrl: "https://storage.googleapis.com/mock-url",
-      fileUrl: `default.jpg`,
+      valid: true,
+      message:
+        "Driver license document submitted for manual Admin verification.",
     };
   },
 
-  getDriverAvailability: async (driverId = 1) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/drivers/${driverId}/availability`);
-      if (response.ok) return await response.json();
-    } catch (e) {
-      console.warn("Backend availability endpoint notice:", e);
-    }
-    const saved = localStorage.getItem(`driver_availability_${driverId}`);
-    return saved ? JSON.parse(saved) : null;
+
+  /*
+   * Send OTP.
+   */
+  sendOtp: async (
+    phone,
+    isTripOtp = true
+  ) => {
+
+    const cleanPhone =
+      phone
+        .replace(/^\+91/, "")
+        .replace(/[^0-9]/g, "");
+
+    return await apiFetch(
+      "/api/auth/send-otp",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify({
+          phone: cleanPhone,
+          isTripOtp,
+        }),
+      }
+    );
   },
 
-  saveDriverAvailability: async (driverId = 1, availability) => {
+
+  /*
+   * Verify OTP.
+   */
+  verifyOtp: async (
+    phone,
+    otp
+  ) => {
+
+    const cleanPhone =
+      phone
+        .replace(/^\+91/, "")
+        .replace(/[^0-9]/g, "");
+
+    return await apiFetch(
+      "/api/auth/verify-otp",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify({
+          phone: cleanPhone,
+          otp,
+        }),
+      }
+    );
+  },
+
+
+  /*
+   * Check availability.
+   */
+  checkAvailability: async (
+    params
+  ) => {
+
     try {
-      const response = await fetch(`${API_BASE_URL}/api/drivers/${driverId}/availability`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(availability),
-      });
-      if (response.ok) return await response.json();
-    } catch (e) {
-      console.warn("Backend availability save notice:", e);
+
+      const query =
+        new URLSearchParams(
+          params
+        ).toString();
+
+      return await apiFetch(
+        `/api/auth/check-availability?${query}`
+      );
+
+    } catch (error) {
+
+      return {
+        phoneExists: false,
+        emailExists: false,
+        usernameExists: false,
+        licenseExists: false,
+      };
     }
-    localStorage.getItem(`driver_availability_${driverId}`);
-    localStorage.setItem(`driver_availability_${driverId}`, JSON.stringify(availability));
-    return availability;
+  },
+
+
+  /*
+   * Get all users.
+   */
+  getAllUsers: async () => {
+
+    return await apiFetch(
+      "/api/users/all"
+    );
+  },
+
+
+  /*
+   * Update user status.
+   */
+  updateUserStatus: async (
+    userId,
+    status
+  ) => {
+
+    return await apiFetch(
+      `/api/users/${userId}/status`,
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify({
+          status,
+        }),
+      }
+    );
+  },
+
+
+  /*
+   * Update user.
+   */
+  updateUser: async (
+    userId,
+    updatedFields
+  ) => {
+
+    return await apiFetch(
+      `/api/users/${userId}`,
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify(
+          updatedFields
+        ),
+      }
+    );
+  },
+
+
+  /*
+   * Delete user.
+   */
+  deleteUser: async (
+    userId
+  ) => {
+
+    return await apiFetch(
+      `/api/users/${userId}`,
+      {
+        method: "DELETE",
+      }
+    );
+  },
+
+
+  /*
+   * Signed URL placeholder.
+   */
+  getSignedUrl: async (
+    fileName
+  ) => {
+
+    return {
+      uploadUrl:
+        "https://storage.googleapis.com/mock-url",
+
+      fileUrl:
+        "default.jpg",
+    };
+  },
+
+
+  /*
+   * Get driver availability.
+   */
+  getDriverAvailability: async (
+    driverId = 1
+  ) => {
+
+    try {
+
+      return await apiFetch(
+        `/api/drivers/${driverId}/availability`
+      );
+
+    } catch (error) {
+
+      console.warn(
+        "Backend availability endpoint notice:",
+        error
+      );
+
+      const saved =
+        localStorage.getItem(
+          `driver_availability_${driverId}`
+        );
+
+      return saved
+        ? JSON.parse(saved)
+        : null;
+    }
+  },
+
+
+  /*
+   * Save driver availability.
+   */
+  saveDriverAvailability: async (
+    driverId = 1,
+    availability
+  ) => {
+
+    try {
+
+      return await apiFetch(
+        `/api/drivers/${driverId}/availability`,
+        {
+          method: "PUT",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify(
+            availability
+          ),
+        }
+      );
+
+    } catch (error) {
+
+      console.warn(
+        "Backend availability save notice:",
+        error
+      );
+
+      localStorage.setItem(
+        `driver_availability_${driverId}`,
+        JSON.stringify(
+          availability
+        )
+      );
+
+      return availability;
+    }
   },
 };
+
+
+/*
+ * ============================================================
+ * COMPLAINT API
+ * ============================================================
+ */
 
 export const complaintApi = {
-  getAllComplaints: async () => {
-    const response = await fetch(`${API_BASE_URL}/api/complaints`);
-    if (!response.ok) throw new Error("Failed to fetch complaints");
-    return await response.json();
-  },
 
-  createComplaint: async (complaintData) => {
-    const response = await fetch(`${API_BASE_URL}/api/complaints`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(complaintData),
-    });
-    if (!response.ok) throw new Error("Failed to submit complaint");
-    return await response.json();
-  },
+  getAllComplaints:
+    async () => {
 
-  updateComplaintStatus: async (complaintId, status, resolutionNotes) => {
-    const response = await fetch(`${API_BASE_URL}/api/complaints/${complaintId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, resolutionNotes }),
-    });
-    if (!response.ok) throw new Error("Failed to update complaint status");
-    return await response.json();
-  },
+      return await apiFetch(
+        "/api/complaints"
+      );
+    },
 
-  deleteComplaint: async (complaintId) => {
-    const response = await fetch(`${API_BASE_URL}/api/complaints/${complaintId}`, {
-      method: "DELETE",
-    });
-    if (!response.ok) throw new Error("Failed to delete complaint");
-    return await response.json();
-  },
+
+  createComplaint:
+    async (
+      complaintData
+    ) => {
+
+      return await apiFetch(
+        "/api/complaints",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify(
+            complaintData
+          ),
+        }
+      );
+    },
+
+
+  updateComplaintStatus:
+    async (
+      complaintId,
+      status,
+      resolutionNotes
+    ) => {
+
+      return await apiFetch(
+        `/api/complaints/${complaintId}`,
+        {
+          method: "PUT",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            status,
+            resolutionNotes,
+          }),
+        }
+      );
+    },
+
+
+  deleteComplaint:
+    async (
+      complaintId
+    ) => {
+
+      return await apiFetch(
+        `/api/complaints/${complaintId}`,
+        {
+          method: "DELETE",
+        }
+      );
+    },
 };
+
+
+/*
+ * ============================================================
+ * RIDE API
+ * ============================================================
+ */
 
 export const rideApi = {
+
+  /*
+   * Get ALL rides.
+   *
+   * GET /api/rides
+   *
+   * This is important for the Driver Ride Requests page.
+   */
   getAllRides: async () => {
-    try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      let response = await fetch(`${API_BASE_URL}/api/rides`, { headers });
-      if (!response.ok) {
-        response = await fetch(`http://localhost:8082/api/rides`, { headers });
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("jwtToken") ||
+      sessionStorage.getItem("token") ||
+      sessionStorage.getItem("jwtToken");
+
+    const headers = {
+      "Content-Type":
+        "application/json",
+    };
+
+    if (token) {
+      headers.Authorization =
+        `Bearer ${token}`;
+    }
+
+    return await apiFetch(
+      "/api/rides",
+      {
+        method: "GET",
+        headers,
       }
-      if (response.ok) return await response.json();
-    } catch (e) {
-      console.warn("Backend rides endpoint notice, attempting direct port 8082 fallback:", e);
-      try {
-        const directResp = await fetch(`http://localhost:8082/api/rides`);
-        if (directResp.ok) return await directResp.json();
-      } catch (err) {}
+    );
+  },
+
+
+  /*
+   * Get ride by ID.
+   *
+   * GET /api/rides/{id}
+   */
+  getRideById: async (
+    rideId
+  ) => {
+
+    return await apiFetch(
+      `/api/rides/${rideId}`
+    );
+  },
+
+
+  /*
+   * Get rides for a user.
+   *
+   * GET /api/rides/user/{userId}
+   */
+  getRidesByUserId: async (
+    userId
+  ) => {
+
+    return await apiFetch(
+      `/api/rides/user/${userId}`
+    );
+  },
+
+
+  /*
+   * Get rides assigned to driver.
+   *
+   * GET /api/rides/driver/{driverId}
+   */
+  getRidesByDriverId: async (
+    driverId
+  ) => {
+
+    return await apiFetch(
+      `/api/rides/driver/${driverId}`
+    );
+  },
+
+
+  /*
+   * ========================================================
+   * CREATE RIDE
+   * ========================================================
+   *
+   * Backend:
+   *
+   * POST /api/rides
+   *
+   * CreateRideRequest:
+   *
+   * {
+   *   userId,
+   *   vehicleId,
+   *   source,
+   *   destination
+   * }
+   *
+   * IMPORTANT:
+   *
+   * Do NOT send:
+   * - fare
+   * - vehicleType
+   * - status
+   * - paymentMode
+   *
+   * The backend creates the ride with:
+   *
+   * status = 0
+   *
+   * 0 = Requested
+   */
+  createRide: async (
+    rideData
+  ) => {
+
+    /*
+     * Validate input before sending.
+     */
+    if (!rideData) {
+      throw new Error(
+        "Ride data is required."
+      );
     }
-    return [];
-  },
 
-  getRideById: async (rideId) => {
-    const response = await fetch(`${API_BASE_URL}/api/rides/${rideId}`);
-    if (!response.ok) throw new Error("Failed to fetch ride details");
-    return await response.json();
-  },
-
-  getRidesByDriverId: async (driverId) => {
-    const response = await fetch(`${API_BASE_URL}/api/rides/driver/${driverId}`);
-    if (!response.ok) throw new Error("Failed to fetch driver rides");
-    return await response.json();
-  },
-
-  getRidesByUserId: async (userId) => {
-    const response = await fetch(`${API_BASE_URL}/api/rides/user/${userId}`);
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to fetch user rides from database.");
+    if (
+      rideData.userId ===
+      undefined ||
+      rideData.userId ===
+      null
+    ) {
+      throw new Error(
+        "User ID is required."
+      );
     }
-    return await response.json();
+
+    if (
+      rideData.vehicleId ===
+      undefined ||
+      rideData.vehicleId ===
+      null
+    ) {
+      throw new Error(
+        "Vehicle ID is required."
+      );
+    }
+
+    if (
+      !rideData.source ||
+      !rideData.source.trim()
+    ) {
+      throw new Error(
+        "Source location is required."
+      );
+    }
+
+    if (
+      !rideData.destination ||
+      !rideData.destination.trim()
+    ) {
+      throw new Error(
+        "Destination location is required."
+      );
+    }
+
+    /*
+     * IMPORTANT:
+     *
+     * Build a NEW object.
+     *
+     * This prevents accidental fields such as
+     * fare/status/paymentMode from being sent.
+     */
+    const payload = {
+      userId:
+        Number(rideData.userId),
+
+      vehicleId:
+        Number(rideData.vehicleId),
+
+      source:
+        rideData.source.trim(),
+
+      destination:
+        rideData.destination.trim(),
+    };
+
+    console.log(
+      "%c[Ride API] 📦 CREATE RIDE PAYLOAD:",
+      "color: #f59e0b; font-weight: bold;",
+      payload
+    );
+
+    /*
+     * Final payload should look like:
+     *
+     * {
+     *   userId: 3,
+     *   vehicleId: 1,
+     *   source: "Kothrud, Pune",
+     *   destination: "Viman Nagar, Pune"
+     * }
+     */
+    const response =
+      await apiFetch(
+        "/api/rides",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify(
+            payload
+          ),
+        }
+      );
+
+    console.log(
+      "%c[Ride API] ✅ CREATE RIDE RESPONSE:",
+      "color: #22c55e; font-weight: bold;",
+      response
+    );
+
+    return response;
   },
 
-  createRide: async (rideData) => {
-    const response = await fetch(`${API_BASE_URL}/api/rides`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(rideData),
-    });
-    if (!response.ok) throw new Error("Failed to create ride request in database");
-    return await response.json();
+
+  /*
+   * Accept ride.
+   *
+   * PUT /api/rides/{id}/accept
+   */
+  acceptRide: async (
+    rideId,
+    driverId
+  ) => {
+
+    const numericId =
+      String(rideId)
+        .replace(/^REQ-/, "")
+        .replace(/^RIDE-/, "");
+
+    return await apiFetch(
+      `/api/rides/${numericId}/accept`,
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify({
+          driverId:
+            Number(driverId),
+        }),
+      }
+    );
   },
 
-  acceptRide: async (rideId, driverId) => {
-    const response = await fetch(`${API_BASE_URL}/api/rides/${rideId}/accept`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ driverId }),
-    });
-    if (!response.ok) throw new Error("Failed to accept ride request");
-    return await response.json();
+
+  /*
+   * Start ride.
+   *
+   * PUT /api/rides/{id}/start
+   *
+   * Backend changes:
+   * status = 2
+   */
+  startRide: async (
+    rideId
+  ) => {
+
+    const numericId =
+      String(rideId)
+        .replace(/^REQ-/, "")
+        .replace(/^RIDE-/, "");
+
+    return await apiFetch(
+      `/api/rides/${numericId}/start`,
+      {
+        method: "PUT",
+      }
+    );
   },
 
-  startRide: async (rideId) => {
-    const response = await fetch(`${API_BASE_URL}/api/rides/${rideId}/start`, {
-      method: "PUT",
-    });
-    if (!response.ok) throw new Error("Failed to start trip");
-    return await response.json();
+
+  /*
+   * Complete ride.
+   *
+   * PUT /api/rides/{id}/complete
+   *
+   * Backend changes:
+   * status = 1
+   */
+  completeRide: async (
+    rideId
+  ) => {
+
+    const numericId =
+      String(rideId)
+        .replace(/^REQ-/, "")
+        .replace(/^RIDE-/, "");
+
+    return await apiFetch(
+      `/api/rides/${numericId}/complete`,
+      {
+        method: "PUT",
+      }
+    );
   },
 
-  completeRide: async (rideId) => {
-    const response = await fetch(`${API_BASE_URL}/api/rides/${rideId}/complete`, {
-      method: "PUT",
-    });
-    if (!response.ok) throw new Error("Failed to complete trip");
-    return await response.json();
+
+  /*
+   * Alias for completeRide.
+   */
+  completeTrip: async (
+    rideId
+  ) => {
+
+    const numericId =
+      String(rideId)
+        .replace(/^REQ-/, "")
+        .replace(/^RIDE-/, "");
+
+    return await apiFetch(
+      `/api/rides/${numericId}/complete`,
+      {
+        method: "PUT",
+      }
+    );
   },
 
-  confirmPayment: async (rideId, paymentData) => {
-    const response = await fetch(`${API_BASE_URL}/api/rides/${rideId}/confirm-payment`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(paymentData),
-    });
-    if (!response.ok) throw new Error("Failed to confirm payment");
-    return await response.json();
+
+  /*
+   * Confirm payment.
+   *
+   * POST /api/rides/{id}/confirm-payment
+   */
+  confirmPayment: async (
+    rideId,
+    paymentData
+  ) => {
+
+    const numericId =
+      String(rideId)
+        .replace(/^REQ-/, "")
+        .replace(/^RIDE-/, "");
+
+    return await apiFetch(
+      `/api/rides/${numericId}/confirm-payment`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify(
+          paymentData
+        ),
+      }
+    );
   },
 };
+
+
+/*
+ * ============================================================
+ * PAYMENT API
+ * ============================================================
+ */
 
 export const paymentApi = {
+
+  /*
+   * Get all payments.
+   */
   getAllPayments: async () => {
-    const response = await fetch(`${API_BASE_URL}/api/payments`);
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to fetch payments from database.");
-    }
-    return await response.json();
+
+    const response =
+      await apiFetch(
+        "/api/payments"
+      );
+
+    return Array.isArray(response)
+      ? response
+      : response?.data || [];
+  },
+
+
+  /*
+   * Process payment.
+   */
+  processPayment: async (
+    paymentRequest
+  ) => {
+
+    const response =
+      await apiFetch(
+        "/api/payments/process",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify(
+            paymentRequest
+          ),
+        }
+      );
+
+    return (
+      response?.data ||
+      response
+    );
   },
 };
-
 

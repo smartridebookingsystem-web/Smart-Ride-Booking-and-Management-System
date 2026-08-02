@@ -8,6 +8,7 @@ export default function AdminSidebar({
   totalRidesCount,
   paymentsCount,
   openComplaintsCount,
+  deactivatedCount,
 }) {
   const navItems = [
     {
@@ -50,6 +51,13 @@ export default function AdminSidebar({
       label: "Complaint Management",
       icon: "bi-chat-square-quote-fill",
       badge: openComplaintsCount > 0 ? `${openComplaintsCount} Open` : null,
+      badgeClass: "bg-danger text-white",
+    },
+    {
+      id: "deactivated",
+      label: "Deactivated Accounts",
+      icon: "bi-person-x-fill",
+      badge: deactivatedCount > 0 ? `${deactivatedCount}` : null,
       badgeClass: "bg-danger text-white",
     },
     {

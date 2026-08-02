@@ -17,6 +17,7 @@ public class RouterValidator {
             "/api/auth/check-availability",
             "/api/users",
             "/api/rides",
+            "/api/payments",
             "/eureka"
     );
 

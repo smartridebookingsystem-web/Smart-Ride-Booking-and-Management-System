@@ -1,3 +1,4 @@
+
 package com.srbms.rideservice.service;
 
 import com.srbms.rideservice.dto.AssignDriverRequest;
@@ -14,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,138 +24,587 @@ public class RideService {
     private final DriverRideRepository driverRideRepository;
 
     @Autowired
-    public RideService(RideRepository rideRepository, DriverRideRepository driverRideRepository) {
+    public RideService(
+            RideRepository rideRepository,
+            DriverRideRepository driverRideRepository) {
+
         this.rideRepository = rideRepository;
         this.driverRideRepository = driverRideRepository;
     }
 
+    /*
+     * ============================================================
+     * INITIAL DATA
+     * ============================================================
+     *
+     * Only inserts sample data if the ride table is empty.
+     */
     @jakarta.annotation.PostConstruct
     public void seedInitialDataIfEmpty() {
+
         if (rideRepository.count() == 0) {
-            Ride r1 = new Ride(4, 1, "Sangli Bus Stand", "VPIMSR College", 1);
-            Ride r2 = new Ride(3, 2, "Shivaji University", "Railway Station", 1);
-            Ride r3 = new Ride(4, 1, "Market Yard", "Ganapati Temple", 2);
+
+            Ride r1 = new Ride(
+                    4,
+                    1,
+                    "Sangli Bus Stand",
+                    "VPIMSR College",
+                    1
+            );
+
+            Ride r2 = new Ride(
+                    3,
+                    2,
+                    "Shivaji University",
+                    "Railway Station",
+                    1
+            );
+
+            Ride r3 = new Ride(
+                    4,
+                    1,
+                    "Market Yard",
+                    "Ganapati Temple",
+                    2
+            );
 
             r1 = rideRepository.save(r1);
             r2 = rideRepository.save(r2);
             r3 = rideRepository.save(r3);
 
-            driverRideRepository.save(new DriverRide(r1.getRideId(), 2));
-            driverRideRepository.save(new DriverRide(r2.getRideId(), 1));
-            driverRideRepository.save(new DriverRide(r3.getRideId(), 2));
+            driverRideRepository.save(
+                    new DriverRide(
+                            r1.getRideId(),
+                            2
+                    )
+            );
+
+            driverRideRepository.save(
+                    new DriverRide(
+                            r2.getRideId(),
+                            1
+                    )
+            );
+
+            driverRideRepository.save(
+                    new DriverRide(
+                            r3.getRideId(),
+                            2
+                    )
+            );
         }
     }
 
+
+    /*
+     * ============================================================
+     * GET ALL RIDES
+     * ============================================================
+     *
+     * GET /api/rides
+     */
     public List<RideDto> getAllRides() {
-        return rideRepository.findAll().stream()
+
+        return rideRepository.findAll()
+                .stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
-    public RideDto getRideById(Integer rideId) {
-        Ride ride = rideRepository.findById(rideId)
-                .orElseThrow(() -> new RuntimeException("Ride not found with ID: " + rideId));
+
+    /*
+     * ============================================================
+     * GET RIDE BY ID
+     * ============================================================
+     *
+     * GET /api/rides/{id}
+     */
+    public RideDto getRideById(
+            Integer rideId) {
+
+        Ride ride =
+                rideRepository.findById(rideId)
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "Ride not found with ID: "
+                                                + rideId
+                                )
+                        );
+
         return convertToDto(ride);
     }
 
-    public List<RideDto> getRidesByUserId(Integer userId) {
-        return rideRepository.findByUserId(userId).stream()
+
+    /*
+     * ============================================================
+     * GET RIDES BY USER
+     * ============================================================
+     *
+     * GET /api/rides/user/{userId}
+     */
+    public List<RideDto> getRidesByUserId(
+            Integer userId) {
+
+        return rideRepository
+                .findByUserId(userId)
+                .stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
+
+    /*
+     * ============================================================
+     * CREATE RIDE
+     * ============================================================
+     *
+     * POST /api/rides
+     *
+     * CreateRideRequest contains:
+     *
+     * userId
+     * vehicleId
+     * source
+     * destination
+     *
+     * IMPORTANT:
+     *
+     * status = 0
+     *
+     * Your status definitions are:
+     *
+     * 0 = Requested
+     * 1 = Completed
+     * 2 = In Progress
+     * 3 = Accepted
+     *
+     * Therefore a newly created rider request MUST be status 0.
+     */
     @Transactional
-    public RideDto createRide(CreateRideRequest request) {
-        // Status 2 represents 'inprogress' / pending request
-        Ride ride = new Ride(
-                request.getUserId(),
-                request.getVehicleId() != null ? request.getVehicleId() : 1,
-                request.getSource(),
-                request.getDestination(),
-                2
-        );
-        Ride savedRide = rideRepository.save(ride);
-        return convertToDto(savedRide);
-    }
+    public RideDto createRide(
+            CreateRideRequest request) {
 
-    @Transactional
-    public RideDto updateRideStatus(Integer rideId, Integer status) {
-        Ride ride = rideRepository.findById(rideId)
-                .orElseThrow(() -> new RuntimeException("Ride not found with ID: " + rideId));
-        ride.setStatus(status);
-        Ride updatedRide = rideRepository.save(ride);
-        return convertToDto(updatedRide);
-    }
-
-    @Transactional
-    public RideDto acceptRide(Integer rideId, Integer driverId) {
-        Ride ride = rideRepository.findById(rideId)
-                .orElseThrow(() -> new RuntimeException("Ride not found with ID: " + rideId));
-
-        ride.setStatus(3); // Status 3 represents Accepted
-        Ride updatedRide = rideRepository.save(ride);
-
-        Optional<DriverRide> existingAssignment = driverRideRepository.findByRideId(rideId);
-        if (existingAssignment.isPresent()) {
-            DriverRide dr = existingAssignment.get();
-            dr.setDriverId(driverId);
-            driverRideRepository.save(dr);
-        } else {
-            DriverRide driverRide = new DriverRide(rideId, driverId);
-            driverRideRepository.save(driverRide);
+        /*
+         * Validate request.
+         *
+         * @Valid in the controller already validates these
+         * fields, but these checks make the service safer.
+         */
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "Ride request cannot be null."
+            );
         }
 
-        return convertToDto(updatedRide);
+        if (request.getUserId() == null) {
+            throw new IllegalArgumentException(
+                    "User ID is required."
+            );
+        }
+
+        if (request.getVehicleId() == null) {
+            throw new IllegalArgumentException(
+                    "Vehicle ID is required."
+            );
+        }
+
+        if (request.getSource() == null ||
+                request.getSource().trim().isEmpty()) {
+
+            throw new IllegalArgumentException(
+                    "Source location is required."
+            );
+        }
+
+        if (request.getDestination() == null ||
+                request.getDestination().trim().isEmpty()) {
+
+            throw new IllegalArgumentException(
+                    "Destination location is required."
+            );
+        }
+
+
+        /*
+         * Create the ride.
+         *
+         * IMPORTANT:
+         * status = 0
+         */
+        Ride ride = new Ride(
+                request.getUserId(),
+                request.getVehicleId(),
+                request.getSource().trim(),
+                request.getDestination().trim(),
+                0
+        );
+
+
+        /*
+         * Save into:
+         *
+         * ride
+         *
+         * table.
+         */
+        Ride savedRide =
+                rideRepository.save(ride);
+
+
+        System.out.println(
+                "[RideService] ✅ Ride created: "
+                        + "rideId="
+                        + savedRide.getRideId()
+                        + ", userId="
+                        + savedRide.getUserId()
+                        + ", vehicleId="
+                        + savedRide.getVehicleId()
+                        + ", source="
+                        + savedRide.getSource()
+                        + ", destination="
+                        + savedRide.getDestination()
+                        + ", status="
+                        + savedRide.getStatus()
+        );
+
+
+        return convertToDto(
+                savedRide
+        );
     }
 
+
+    /*
+     * ============================================================
+     * UPDATE RIDE STATUS
+     * ============================================================
+     *
+     * PUT /api/rides/{id}/status
+     */
     @Transactional
-    public RideDto startTrip(Integer rideId) {
-        Ride ride = rideRepository.findById(rideId)
-                .orElseThrow(() -> new RuntimeException("Ride not found with ID: " + rideId));
-        ride.setStatus(2); // Status 2 = In Progress
-        Ride updatedRide = rideRepository.save(ride);
-        return convertToDto(updatedRide);
+    public RideDto updateRideStatus(
+            Integer rideId,
+            Integer status) {
+
+        Ride ride =
+                rideRepository.findById(rideId)
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "Ride not found with ID: "
+                                                + rideId
+                                )
+                        );
+
+        ride.setStatus(status);
+
+        Ride updatedRide =
+                rideRepository.save(ride);
+
+        return convertToDto(
+                updatedRide
+        );
     }
 
+
+    /*
+     * ============================================================
+     * ACCEPT RIDE
+     * ============================================================
+     *
+     * PUT /api/rides/{id}/accept
+     *
+     * Body:
+     *
+     * {
+     *   "driverId": 5
+     * }
+     *
+     * Changes:
+     *
+     * ride.status = 3
+     *
+     * driver_ride.driver_id = driverId
+     */
     @Transactional
-    public RideDto completeTrip(Integer rideId) {
-        Ride ride = rideRepository.findById(rideId)
-                .orElseThrow(() -> new RuntimeException("Ride not found with ID: " + rideId));
-        ride.setStatus(1); // Status 1 = Completed
-        Ride updatedRide = rideRepository.save(ride);
-        return convertToDto(updatedRide);
+    public RideDto acceptRide(
+            Integer rideId,
+            Integer driverId) {
+
+        if (driverId == null) {
+            throw new IllegalArgumentException(
+                    "Driver ID is required."
+            );
+        }
+
+
+        Ride ride =
+                rideRepository.findById(rideId)
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "Ride not found with ID: "
+                                                + rideId
+                                )
+                        );
+
+
+        /*
+         * Only a requested ride should normally
+         * be accepted.
+         */
+        if (ride.getStatus() != null &&
+                ride.getStatus() != 0) {
+
+            throw new IllegalStateException(
+                    "Ride #" + rideId
+                            + " is no longer available. "
+                            + "Current status: "
+                            + ride.getStatus()
+            );
+        }
+
+
+        /*
+         * 3 = Accepted
+         */
+        ride.setStatus(3);
+
+        Ride updatedRide =
+                rideRepository.save(ride);
+
+
+        /*
+         * Check whether an assignment already exists.
+         */
+        Optional<DriverRide> existingAssignment =
+                driverRideRepository
+                        .findByRideId(rideId);
+
+
+        if (existingAssignment.isPresent()) {
+
+            DriverRide driverRide =
+                    existingAssignment.get();
+
+            driverRide.setDriverId(
+                    driverId
+            );
+
+            driverRideRepository.save(
+                    driverRide
+            );
+
+        } else {
+
+            DriverRide driverRide =
+                    new DriverRide(
+                            rideId,
+                            driverId
+                    );
+
+            driverRideRepository.save(
+                    driverRide
+            );
+        }
+
+
+        System.out.println(
+                "[RideService] ✅ Ride accepted: "
+                        + "rideId="
+                        + rideId
+                        + ", driverId="
+                        + driverId
+        );
+
+
+        return convertToDto(
+                updatedRide
+        );
     }
 
+
+    /*
+     * ============================================================
+     * START TRIP
+     * ============================================================
+     *
+     * PUT /api/rides/{id}/start
+     *
+     * 2 = In Progress
+     */
     @Transactional
-    public RideDto confirmPayment(Integer rideId, ConfirmPaymentRequest request) {
-        Ride ride = rideRepository.findById(rideId)
-                .orElseThrow(() -> new RuntimeException("Ride not found with ID: " + rideId));
+    public RideDto startTrip(
+            Integer rideId) {
 
-        ride.setStatus(1); // Status 1 = Completed & Paid
-        Ride updatedRide = rideRepository.save(ride);
-        return convertToDto(updatedRide);
+        Ride ride =
+                rideRepository.findById(rideId)
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "Ride not found with ID: "
+                                                + rideId
+                                )
+                        );
+
+
+        /*
+         * 2 = In Progress
+         */
+        ride.setStatus(2);
+
+        Ride updatedRide =
+                rideRepository.save(ride);
+
+        return convertToDto(
+                updatedRide
+        );
     }
 
+
+    /*
+     * ============================================================
+     * COMPLETE TRIP
+     * ============================================================
+     *
+     * PUT /api/rides/{id}/complete
+     *
+     * 1 = Completed
+     */
     @Transactional
-    public RideDto assignDriver(Integer rideId, Integer driverId) {
-        return acceptRide(rideId, driverId);
+    public RideDto completeTrip(
+            Integer rideId) {
+
+        Ride ride =
+                rideRepository.findById(rideId)
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "Ride not found with ID: "
+                                                + rideId
+                                )
+                        );
+
+
+        /*
+         * 1 = Completed
+         */
+        ride.setStatus(1);
+
+        Ride updatedRide =
+                rideRepository.save(ride);
+
+        return convertToDto(
+                updatedRide
+        );
     }
 
-    public List<RideDto> getRidesByDriverId(Integer driverId) {
-        List<DriverRide> driverRides = driverRideRepository.findByDriverId(driverId);
-        List<Integer> rideIds = driverRides.stream()
-                .map(DriverRide::getRideId)
-                .collect(Collectors.toList());
 
-        return rideRepository.findAllById(rideIds).stream()
+    /*
+     * ============================================================
+     * CONFIRM PAYMENT
+     * ============================================================
+     *
+     * POST /api/rides/{id}/confirm-payment
+     *
+     * After successful payment:
+     *
+     * status = 1
+     */
+    @Transactional
+    public RideDto confirmPayment(
+            Integer rideId,
+            ConfirmPaymentRequest request) {
+
+        Ride ride =
+                rideRepository.findById(rideId)
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "Ride not found with ID: "
+                                                + rideId
+                                )
+                        );
+
+
+        /*
+         * 1 = Completed / Paid
+         */
+        ride.setStatus(1);
+
+        Ride updatedRide =
+                rideRepository.save(ride);
+
+        return convertToDto(
+                updatedRide
+        );
+    }
+
+
+    /*
+     * ============================================================
+     * ASSIGN DRIVER
+     * ============================================================
+     *
+     * POST /api/rides/{id}/assign-driver
+     */
+    @Transactional
+    public RideDto assignDriver(
+            Integer rideId,
+            Integer driverId) {
+
+        return acceptRide(
+                rideId,
+                driverId
+        );
+    }
+
+
+    /*
+     * ============================================================
+     * GET RIDES BY DRIVER
+     * ============================================================
+     *
+     * GET /api/rides/driver/{driverId}
+     */
+    public List<RideDto> getRidesByDriverId(
+            Integer driverId) {
+
+        List<DriverRide> driverRides =
+                driverRideRepository
+                        .findByDriverId(driverId);
+
+
+        List<Integer> rideIds =
+                driverRides
+                        .stream()
+                        .map(
+                                DriverRide::getRideId
+                        )
+                        .collect(Collectors.toList());
+
+
+        return rideRepository
+                .findAllById(rideIds)
+                .stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
-    private RideDto convertToDto(Ride ride) {
-        Integer driverId = driverRideRepository.findByRideId(ride.getRideId())
-                .map(DriverRide::getDriverId)
-                .orElse(null);
+
+    /*
+     * ============================================================
+     * ENTITY -> DTO
+     * ============================================================
+     */
+    private RideDto convertToDto(
+            Ride ride) {
+
+        Integer driverId =
+                driverRideRepository
+                        .findByRideId(
+                                ride.getRideId()
+                        )
+                        .map(
+                                DriverRide::getDriverId
+                        )
+                        .orElse(null);
+
 
         return new RideDto(
                 ride.getRideId(),
@@ -168,3 +617,4 @@ public class RideService {
         );
     }
 }
+

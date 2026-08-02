@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import MapComponent from "./MapComponent";
 
 export default function RiderHomeContent() {
   const { user } = useSelector((state) => state.auth || {});
-  const username = user?.username.toUpperCase() || "Rider Member";
+  const username = user?.username?.toUpperCase() || "Rider";
+  const navigate = useNavigate();
 
   // Location State for Interactive Leaflet Map
   const [pickup, setPickup] = useState(null);
@@ -13,6 +14,17 @@ export default function RiderHomeContent() {
   const [pickupName, setPickupName] = useState("");
   const [dropName, setDropName] = useState("");
   const [selecting, setSelecting] = useState("pickup");
+
+  // Quick-search form state (now connected)
+  const [vehicleType, setVehicleType] = useState("Hatchback");
+  const [pickupTime, setPickupTime] = useState("");
+
+  // Navigate to SearchRide pre-filled with current values
+  const handleFindDrivers = () => {
+    navigate("/rider/search-ride", {
+      state: { pickupName, dropName, vehicleType },
+    });
+  };
 
   return (
     <div className="rider-home-content">
@@ -79,27 +91,27 @@ export default function RiderHomeContent() {
               </Link>
             </div>
 
-            {/* Quick Stats */}
-            <div className="row mt-4 pt-3 border-top border-secondary">
+            {/* Live Platform Highlights */}
+            <div className="row mt-4 pt-3 border-top border-secondary opacity-90">
               <div className="col-4">
-                <h4 className="fw-bold mb-0" style={{ color: "#FF6B00" }}>
-                  10K+
-                </h4>
-                <small className="text-light">Happy Riders</small>
+                <h5 className="fw-bold mb-0 text-white">
+                  <i className="bi bi-shield-check text-warning me-1.5"></i>Verified
+                </h5>
+                <small className="text-light opacity-75">Maharashtra Drivers</small>
               </div>
 
               <div className="col-4">
-                <h4 className="fw-bold mb-0" style={{ color: "#FF6B00" }}>
-                  2500+
-                </h4>
-                <small className="text-light">Drivers</small>
+                <h5 className="fw-bold mb-0 text-white">
+                  <i className="bi bi-key-fill text-warning me-1.5"></i>SMS OTP
+                </h5>
+                <small className="text-light opacity-75">Twilio Security</small>
               </div>
 
               <div className="col-4">
-                <h4 className="fw-bold mb-0" style={{ color: "#FF6B00" }}>
-                  4.8★
-                </h4>
-                <small className="text-light">Rating</small>
+                <h5 className="fw-bold mb-0 text-white">
+                  <i className="bi bi-currency-rupee text-warning me-1.5"></i>Live Fare
+                </h5>
+                <small className="text-light opacity-75">Haversine KM</small>
               </div>
             </div>
           </div>
@@ -207,10 +219,14 @@ export default function RiderHomeContent() {
                     <label className="form-label fw-semibold">
                       Ride Type
                     </label>
-                    <select className="form-select">
-                      <option>Hatchback (Economy)</option>
-                      <option>Sedan (Comfort)</option>
-                      <option>SUV (Premium)</option>
+                    <select
+                      className="form-select"
+                      value={vehicleType}
+                      onChange={(e) => setVehicleType(e.target.value)}
+                    >
+                      <option value="Hatchback">Hatchback (Economy)</option>
+                      <option value="Sedan">Sedan (Comfort)</option>
+                      <option value="SUV">SUV (Premium)</option>
                     </select>
                   </div>
 
@@ -218,316 +234,88 @@ export default function RiderHomeContent() {
                     <label className="form-label fw-semibold">
                       Pickup Time
                     </label>
-                    <input type="datetime-local" className="form-control" />
+                    <input
+                      type="datetime-local"
+                      className="form-control"
+                      value={pickupTime}
+                      onChange={(e) => setPickupTime(e.target.value)}
+                    />
                   </div>
                 </div>
 
-                <Link
-                  to="/rider/search-ride"
+                <button
+                  type="button"
+                  onClick={handleFindDrivers}
                   className="btn btn-primary w-100 mt-2 py-2 fw-semibold text-white shadow-sm"
                   style={{ background: "#FF6B00", borderColor: "#FF6B00" }}
                 >
                   <i className="bi bi-search me-2"></i>
                   Find Available Drivers
-                </Link>
+                </button>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ================= WHY CHOOSE SMARTRIDE ================= */}
-      <section className="py-4 mb-5 rounded-4 bg-light p-4 shadow-sm">
-        <div className="text-center mb-4">
-          <h3 className="fw-bold" style={{ color: "#FF6B00" }}>
-            Why Choose SmartRide?
-          </h3>
-          <p className="text-muted">
-            Experience a smarter way to travel with safety, comfort and affordability.
-          </p>
-        </div>
-
-        <div className="row g-4">
-          {[
-            {
-              icon: "bi bi-geo-alt-fill",
-              title: "Real-Time Tracking",
-              desc: "Track your ride live from pickup to destination.",
-            },
-            {
-              icon: "bi bi-shield-check",
-              title: "Safe & Secure",
-              desc: "Verified drivers with secure ride experience.",
-            },
-            {
-              icon: "bi bi-cash-stack",
-              title: "Affordable Pricing",
-              desc: "Transparent pricing without hidden charges.",
-            },
-            {
-              icon: "bi bi-headset",
-              title: "24×7 Support",
-              desc: "Dedicated support team available anytime.",
-            },
-          ].map((item, index) => (
-            <div className="col-lg-3 col-md-6" key={index}>
-              <div className="card border-0 shadow-sm h-100 text-center p-4">
-                <div
-                  className="mx-auto mb-3 d-flex align-items-center justify-content-center"
-                  style={{
-                    width: "65px",
-                    height: "65px",
-                    borderRadius: "50%",
-                    background: "rgba(255,107,0,.12)",
-                  }}
-                >
-                  <i
-                    className={`${item.icon}`}
-                    style={{
-                      fontSize: "28px",
-                      color: "#FF6B00",
-                    }}
-                  ></i>
-                </div>
-
-                <h5 className="fw-bold">{item.title}</h5>
-                <p className="text-muted small mb-0">{item.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ================= RIDE CATEGORIES ================= */}
-      <section className="py-4 mb-5">
-        <div className="text-center mb-4">
-          <h3 className="fw-bold" style={{ color: "#FF6B00" }}>
-            Ride Categories
-          </h3>
-          <p className="text-muted">
-            Choose the perfect ride according to your travel needs.
-          </p>
-        </div>
-
-        <div className="row g-4">
-          {[
-            {
-              name: "Hatchback",
-              icon: "bi bi-car-front-fill",
-              desc: "Affordable rides for daily travel.",
-            },
-            {
-              name: "Sedan",
-              icon: "bi bi-car-front",
-              desc: "Comfortable rides for family and business.",
-            },
-            {
-              name: "SUV",
-              icon: "bi bi-truck-front-fill",
-              desc: "Spacious rides for groups and luggage.",
-            },
-          ].map((ride, index) => (
-            <div className="col-lg-4" key={index}>
-              <div className="card border-0 shadow-sm text-center h-100 p-4">
-                <div
-                  className="mx-auto mb-3 d-flex align-items-center justify-content-center"
-                  style={{
-                    width: "80px",
-                    height: "80px",
-                    borderRadius: "50%",
-                    background: "rgba(255,107,0,.12)",
-                  }}
-                >
-                  <i
-                    className={ride.icon}
-                    style={{
-                      fontSize: "36px",
-                      color: "#FF6B00",
-                    }}
-                  ></i>
-                </div>
-
-                <h4 className="fw-bold">{ride.name}</h4>
-                <p className="text-muted small mb-0">{ride.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ================= POPULAR DESTINATIONS ================= */}
-      <section className="py-4 mb-5 rounded-4 bg-light p-4 shadow-sm">
-        <div className="text-center mb-4">
-          <h3 className="fw-bold" style={{ color: "#FF6B00" }}>
-            Popular Destinations
-          </h3>
-          <p className="text-muted">
-            Frequently travelled locations around Pune.
-          </p>
-        </div>
-
-        <div className="row g-4">
-          {[
-            {
-              place: "Pune Railway Station",
-              icon: "bi bi-train-front-fill",
-            },
-            {
-              place: "Pune Airport",
-              icon: "bi bi-airplane-fill",
-            },
-            {
-              place: "Hinjewadi IT Park",
-              icon: "bi bi-buildings-fill",
-            },
-            {
-              place: "FC Road",
-              icon: "bi bi-shop",
-            },
-          ].map((item, index) => (
-            <div className="col-lg-3 col-md-6" key={index}>
-              <div className="card border-0 shadow-sm h-100 text-center p-4">
-                <i
-                  className={item.icon}
-                  style={{
-                    fontSize: "36px",
-                    color: "#FF6B00",
-                  }}
-                ></i>
-
-                <h6 className="fw-bold mt-3 mb-0">{item.place}</h6>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ================= HOW IT WORKS ================= */}
+      {/* ================= HOW IT WORKS (CLEAN STEP GUIDE) ================= */}
       <section
-        className="py-5 mb-5 rounded-4 p-4 text-white shadow-sm"
+        className="py-4 mb-4 rounded-4 p-4 text-white shadow-sm"
         style={{
           background: "#0F172A",
         }}
       >
-        <div className="text-center mb-4">
-          <h3 className="fw-bold" style={{ color: "#FF6B00" }}>
-            How It Works
-          </h3>
-          <p className="text-light">
-            Booking a ride is simple and takes less than a minute.
+        <div className="text-center mb-3">
+          <h4 className="fw-bold" style={{ color: "#FF6B00" }}>
+            How SmartRide Works
+          </h4>
+          <p className="text-light small mb-0">
+            Booking a ride in Pune takes less than a minute.
           </p>
         </div>
 
-        <div className="row text-center g-4">
+        <div className="row text-center g-3">
           {[
             {
               step: "1",
               icon: "bi bi-geo-alt-fill",
               title: "Choose Locations",
-              desc: "Enter your pickup and destination.",
+              desc: "Enter pickup and drop location or pick on Pune map.",
             },
             {
               step: "2",
               icon: "bi bi-car-front-fill",
               title: "Select Vehicle",
-              desc: "Choose Hatchback, Sedan or SUV.",
+              desc: "Pick Hatchback, Sedan, or SUV at exact KM rate.",
             },
             {
               step: "3",
-              icon: "bi bi-check-circle-fill",
-              title: "Enjoy Your Ride",
-              desc: "Track your driver and travel safely.",
+              icon: "bi bi-key-fill",
+              title: "OTP Verification",
+              desc: "Share 6-digit OTP code with driver upon arrival.",
             },
           ].map((item, index) => (
             <div className="col-lg-4" key={index}>
-              <div className="p-3">
+              <div className="p-2">
                 <div
-                  className="mx-auto mb-3 d-flex align-items-center justify-content-center"
+                  className="mx-auto mb-2 d-flex align-items-center justify-content-center"
                   style={{
-                    width: "75px",
-                    height: "75px",
+                    width: "55px",
+                    height: "55px",
                     borderRadius: "50%",
                     background: "#FF6B00",
                     color: "#fff",
                   }}
                 >
-                  <i
-                    className={item.icon}
-                    style={{
-                      fontSize: "32px",
-                    }}
-                  ></i>
+                  <i className={item.icon} style={{ fontSize: "24px" }}></i>
                 </div>
-
-                <h4
-                  className="fw-bold"
-                  style={{
-                    color: "#FF6B00",
-                  }}
-                >
-                  Step {item.step}
-                </h4>
-
-                <h6 className="text-white fw-bold">{item.title}</h6>
-                <p className="text-light small">{item.desc}</p>
+                <h6 className="text-white fw-bold mb-1">Step {item.step}: {item.title}</h6>
+                <p className="text-light small opacity-80 mb-0">{item.desc}</p>
               </div>
             </div>
           ))}
         </div>
       </section>
-
-      {/* ================= TESTIMONIALS ================= */}
-      <section className="py-4 mb-4">
-        <div className="text-center mb-4">
-          <h3 className="fw-bold" style={{ color: "#FF6B00" }}>
-            What Our Customers Say
-          </h3>
-          <p className="text-muted">
-            Thousands of happy riders trust SmartRide every day.
-          </p>
-        </div>
-
-        <div className="row g-4">
-          {[
-            {
-              name: "Rahul Sharma",
-              city: "Pune",
-              review:
-                "SmartRide is fast, reliable and affordable. The drivers are professional and rides are always on time.",
-            },
-            {
-              name: "Priya Patil",
-              city: "Mumbai",
-              review:
-                "The booking process is simple and the live tracking feature makes every journey stress-free.",
-            },
-            {
-              name: "Amit Deshmukh",
-              city: "Nagpur",
-              review:
-                "Excellent service with clean vehicles and friendly drivers. Highly recommended for daily commuting.",
-            },
-          ].map((item, index) => (
-            <div className="col-lg-4" key={index}>
-              <div className="card border-0 shadow-sm h-100 p-4">
-                <div className="mb-2">
-                  <i
-                    className="bi bi-stars"
-                    style={{
-                      color: "#FF6B00",
-                      fontSize: "20px",
-                    }}
-                  ></i>
-                </div>
-                <p className="text-muted fst-italic small mb-3">"{item.review}"</p>
-                <hr className="my-2" />
-                <h6 className="fw-bold mb-0">{item.name}</h6>
-                <small className="text-muted">{item.city}</small>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div >
+    </div>
   );
 }

@@ -12,6 +12,7 @@ import DriverManagement from "./DriverManagement";
 import RideManagement from "./RideManagement";
 import PaymentManagement from "./PaymentManagement";
 import ComplaintManagement from "./ComplaintManagement";
+import DeactivatedAccounts from "./DeactivatedAccounts";
 import SystemReports from "./SystemReports";
 import ComplaintModal from "./ComplaintModal";
 import LicensePreviewModal from "./LicensePreviewModal";
@@ -242,9 +243,10 @@ export default function Admindashboard() {
   };
 
   // Helper Metrics Calculations
-  const totalUsersCount = users.length || 15;
-  const totalDriversCount = drivers.length || 5;
-  const totalRidesCount = rides.length || 5;
+  const deactivatedUsers = users.filter((u) => String(u.status || "").toLowerCase() === "deactivated");
+  const totalUsersCount = users.length;
+  const totalDriversCount = drivers.length;
+  const totalRidesCount = rides.length;
   const totalRevenue = payments.reduce((acc, p) => acc + (p.totalFare || 0), 0);
   const openComplaintsCount = complaints.filter((c) => c.status === "Open" || c.status === "In Progress").length;
 
@@ -271,6 +273,7 @@ export default function Admindashboard() {
             totalRidesCount={totalRidesCount}
             paymentsCount={payments.length}
             openComplaintsCount={openComplaintsCount}
+            deactivatedCount={deactivatedUsers.length}
           />
         </div>
 
@@ -340,6 +343,14 @@ export default function Admindashboard() {
                   setSelectedComplaint={setSelectedComplaint}
                   setResolutionStatus={setResolutionStatus}
                   setResolutionNotes={setResolutionNotes}
+                />
+              )}
+
+              {activeTab === "deactivated" && (
+                <DeactivatedAccounts
+                  deactivatedUsers={deactivatedUsers}
+                  setUsers={setUsers}
+                  setDrivers={setDrivers}
                 />
               )}
 

@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:admin": "vite --port 5173",
+    "dev:driver": "vite --port 5174",
+    "dev:rider": "vite --port 5175",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

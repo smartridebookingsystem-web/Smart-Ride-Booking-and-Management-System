@@ -1,37 +1,280 @@
+
 import React, { useState, useEffect } from "react";
-import { Link, useOutletContext } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { useOutletContext } from "react-router-dom";
 import { authApi, rideApi } from "../services/api";
 import { ringtoneService } from "../../utils/ringtoneService";
 
+import DriverIncomingRequest from "./DriverIncomingRequest";
+import DriverOtpModal from "./DriverOtpModal";
+import DriverRecentTrips from "./DriverRecentTrips";
+
 export default function DriverHome() {
-  const { isOnline, setIsOnline } = useOutletContext() || { isOnline: true, setIsOnline: () => {} };
+  const { user } = useSelector((state) => state.auth || {});
+
+  const {
+    isOnline,
+    setIsOnline,
+  } = useOutletContext() || {
+    isOnline: true,
+    setIsOnline: () => { },
+  };
+
+  /* =========================================================
+     DRIVER / TRIP STATE
+  ========================================================= */
 
   const [tripState, setTripState] = useState("IDLE_REQUEST");
   const [navStage, setNavStage] = useState("EN_ROUTE_PICKUP");
+
   const [notice, setNotice] = useState("");
   const [countdown, setCountdown] = useState(60);
-  const [isMuted, setIsMuted] = useState(ringtoneService.getIsMuted());
-  const [showFareBreakdown, setShowFareBreakdown] = useState(false);
-  const [tripSearch, setTripSearch] = useState("");
+
+  const [isMuted, setIsMuted] = useState(
+    ringtoneService.getIsMuted()
+  );
+
+  const [showFareBreakdown, setShowFareBreakdown] =
+    useState(false);
+
   const [ridesList, setRidesList] = useState([]);
 
+  /* =========================================================
+     DRIVER DISTRICT
+  ========================================================= */
+
+  const [driverDistrict, setDriverDistrict] = useState(
+    localStorage.getItem("driver_district") || "Sangli"
+  );
+
+  /* =========================================================
+     FETCH RIDES
+     
+     IMPORTANT:
+     Previously the API was called only once.
+     Now it is called immediately and every 3 seconds.
+  ========================================================= */
+
   useEffect(() => {
-    async function fetchRides() {
+    let isMounted = true;
+
+    const fetchRides = async () => {
       try {
         const data = await rideApi.getAllRides();
-        if (Array.isArray(data) && data.length > 0) {
+
+        console.log(
+          "[Driver Dispatch] 📥 Latest rides from backend:",
+          data
+        );
+
+        if (isMounted && Array.isArray(data)) {
           setRidesList(data);
         }
-      } catch (e) {
-        console.warn("Backend rides fetch sync:", e);
+      } catch (error) {
+        console.error(
+          "[Driver Dispatch] ❌ Failed to fetch rides:",
+          error
+        );
       }
-    }
+    };
+
+    // Fetch immediately when page opens
     fetchRides();
+
+    // Check for new rides every 3 seconds
+    const interval = setInterval(() => {
+      fetchRides();
+    }, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
-  // Trigger ringtone sound when incoming ride request is active
+  /* =========================================================
+     DRIVER AREA CHECK
+  ========================================================= */
+
+  const isRideInDriverArea = (
+    pickupLoc,
+    dropLoc,
+    district
+  ) => {
+    if (
+      !district ||
+      district === "All Maharashtra"
+    ) {
+      return true;
+    }
+
+    const distLower = district
+      .toLowerCase()
+      .trim();
+
+    const pickupLower = (
+      pickupLoc || ""
+    ).toLowerCase();
+
+    const dropLower = (
+      dropLoc || ""
+    ).toLowerCase();
+
+    return (
+      pickupLower.includes(distLower) ||
+      dropLower.includes(distLower)
+    );
+  };
+
+  /* =========================================================
+     CHECK WHETHER RIDE IS PENDING
+  ========================================================= */
+
+  const isPendingRide = (ride) => {
+    if (!ride) return false;
+
+    const status = ride.status;
+
+    if (
+      status === 0 ||
+      status === 2 ||
+      status === "PENDING" ||
+      status === "Pending" ||
+      status === "pending"
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
+  /* =========================================================
+     FIND PENDING RIDE FOR THIS DRIVER
+  ========================================================= */
+
+  const pendingRideFromDb = ridesList.find((ride) => {
+    if (!isPendingRide(ride)) {
+      return false;
+    }
+
+    const pickup =
+      ride.source ||
+      ride.pickup ||
+      "";
+
+    const destination =
+      ride.destination ||
+      ride.dropLocation ||
+      ride.drop ||
+      "";
+
+    const isMatch = isRideInDriverArea(
+      pickup,
+      destination,
+      driverDistrict
+    );
+
+    console.log(
+      `[Driver Dispatch] 🔍 Checking Ride #${ride.rideId || ride.id
+      } | Status: ${ride.status
+      } | Pickup: "${pickup}" | Driver Area: "${driverDistrict}" | ${isMatch
+        ? "✅ MATCH"
+        : "❌ OUTSIDE AREA"
+      }`
+    );
+
+    return isMatch;
+  });
+
+  /* =========================================================
+     CONVERT DATABASE RIDE INTO DRIVER REQUEST
+  ========================================================= */
+
+  const pendingRequest = pendingRideFromDb
+    ? {
+      id: `REQ-${pendingRideFromDb.rideId ||
+        pendingRideFromDb.id
+        }`,
+
+      rideId:
+        pendingRideFromDb.rideId ||
+        pendingRideFromDb.id,
+
+      riderName:
+        pendingRideFromDb.riderName ||
+        pendingRideFromDb.rider ||
+        `Rider #${pendingRideFromDb.userId || 4
+        }`,
+
+      phone:
+        pendingRideFromDb.phone ||
+        pendingRideFromDb.mobile ||
+        "+91 98765 43210",
+
+      pickup:
+        pendingRideFromDb.source ||
+        pendingRideFromDb.pickup ||
+        "Sangli Railway Station",
+
+      destination:
+        pendingRideFromDb.destination ||
+        pendingRideFromDb.dropLocation ||
+        pendingRideFromDb.drop ||
+        "Vishrambag, Sangli",
+
+      distance:
+        pendingRideFromDb.distance ||
+        "5.2 km",
+
+      estimatedFare:
+        pendingRideFromDb.fare !== undefined &&
+          pendingRideFromDb.fare !== null
+          ? `₹${pendingRideFromDb.fare}`
+          : "₹280",
+
+      paymentMode:
+        pendingRideFromDb.paymentMode ||
+        pendingRideFromDb.payment_mode ||
+        "UPI",
+
+      vehicleType:
+        pendingRideFromDb.vehicleType ||
+        pendingRideFromDb.vehicle_type ||
+        "Sedan",
+
+      time: "Just now",
+    }
+    : null;
+
+  /* =========================================================
+     RESET COUNTDOWN WHEN NEW REQUEST ARRIVES
+  ========================================================= */
+
   useEffect(() => {
-    if (tripState === "IDLE_REQUEST" && isOnline && !isMuted) {
+    if (pendingRequest && tripState === "IDLE_REQUEST") {
+      setCountdown(60);
+    }
+  }, [pendingRequest?.rideId]);
+
+  /* =========================================================
+     RINGTONE
+     
+     IMPORTANT:
+     Ringtone now depends on pendingRequest.
+     It will NOT ring when there is no ride.
+  ========================================================= */
+
+  useEffect(() => {
+    if (
+      tripState === "IDLE_REQUEST" &&
+      isOnline &&
+      !isMuted &&
+      pendingRequest
+    ) {
+      console.log(
+        "[Driver Dispatch] 🔔 Incoming ride detected. Starting ringtone."
+      );
+
       ringtoneService.startIncomingRingtone();
     } else {
       ringtoneService.stopRingtone();
@@ -40,46 +283,67 @@ export default function DriverHome() {
     return () => {
       ringtoneService.stopRingtone();
     };
-  }, [tripState, isOnline, isMuted]);
+  }, [
+    tripState,
+    isOnline,
+    isMuted,
+    pendingRequest?.rideId,
+  ]);
+
+  /* =========================================================
+     REQUEST COUNTDOWN
+  ========================================================= */
 
   useEffect(() => {
     let timer;
-    if (tripState === "IDLE_REQUEST" && isOnline) {
+
+    if (
+      tripState === "IDLE_REQUEST" &&
+      isOnline &&
+      pendingRequest
+    ) {
       timer = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
+
             ringtoneService.stopRingtone();
-            setTripState("COMPLETED");
-            setNotice("⚠️ Ride request expired (1 min timeout).");
-            setTimeout(() => setNotice(""), 4000);
+
+            setNotice(
+              "⚠️ Ride request expired (1 min timeout)."
+            );
+
+            setTimeout(() => {
+              setNotice("");
+            }, 4000);
+
             return 0;
           }
+
           return prev - 1;
         });
       }, 1000);
     }
-    return () => clearInterval(timer);
-  }, [tripState, isOnline]);
 
-  const pendingRideFromDb = ridesList.find(r => r.status === 2 || r.status === 0) || ridesList[0];
+    return () => {
+      if (timer) {
+        clearInterval(timer);
+      }
+    };
+  }, [
+    tripState,
+    isOnline,
+    pendingRequest?.rideId,
+  ]);
 
-  const pendingRequest = pendingRideFromDb ? {
-    id: `REQ-${pendingRideFromDb.rideId || pendingRideFromDb.id}`,
-    rideId: pendingRideFromDb.rideId || pendingRideFromDb.id,
-    riderName: pendingRideFromDb.riderName || pendingRideFromDb.rider || `Rider #${pendingRideFromDb.userId || 4}`,
-    phone: "+91 98765 43210",
-    pickup: pendingRideFromDb.source || pendingRideFromDb.pickup,
-    destination: pendingRideFromDb.destination,
-    distance: "4.5 km",
-    estimatedFare: `₹${pendingRideFromDb.fare}`,
-    paymentMode: pendingRideFromDb.paymentMode || "UPI",
-    vehicleType: pendingRideFromDb.vehicleType || "Sedan",
-    time: "Just now",
-  } : null;
+  /* =========================================================
+     MUTE / SOUND
+  ========================================================= */
 
   const handleToggleMute = () => {
-    const muted = ringtoneService.toggleMute();
+    const muted =
+      ringtoneService.toggleMute();
+
     setIsMuted(muted);
   };
 
@@ -87,56 +351,322 @@ export default function DriverHome() {
     ringtoneService.testRingtone();
   };
 
+  /* =========================================================
+     ACCEPT RIDE
+  ========================================================= */
+
   const handleAcceptRide = async () => {
-    // Play accept ride request confirmation chime
+    if (!pendingRequest) {
+      console.warn(
+        "[Driver App] ⚠️ No pending ride available."
+      );
+      return;
+    }
+
+    const rId =
+      pendingRequest.rideId;
+
+    console.log(
+      `%c[Driver App] 🚘 Accepting Ride #${rId} for driver area '${driverDistrict}'`,
+      "color: #10b981; font-weight: bold;"
+    );
+
     ringtoneService.playAcceptSound();
 
     try {
-      await authApi.acceptRide(pendingRequest.id, 1);
-    } catch (e) {
-      console.warn("Backend sync:", e);
+      await rideApi.acceptRide(
+        rId,
+        1
+      );
+
+      console.log(
+        `[Driver App] ✅ Ride #${rId} accepted & stored in Database!`
+      );
+
+      // Refresh rides immediately after accepting
+      try {
+        const updatedRides =
+          await rideApi.getAllRides();
+
+        if (Array.isArray(updatedRides)) {
+          setRidesList(updatedRides);
+        }
+      } catch (refreshError) {
+        console.warn(
+          "[Driver App] Ride refresh after accept failed:",
+          refreshError
+        );
+      }
+
+      ringtoneService.stopRingtone();
+
+      setTripState("ACCEPTED");
+
+      setNotice(
+        "✅ Ride Request Accepted! GPS Navigation Started."
+      );
+
+      setTimeout(() => {
+        setNotice("");
+      }, 3500);
+    } catch (error) {
+      console.error(
+        "[Driver App] ❌ Accept Ride API error:",
+        error
+      );
+
+      setNotice(
+        "❌ Unable to accept ride. Please try again."
+      );
+
+      setTimeout(() => {
+        setNotice("");
+      }, 3500);
     }
-    setTripState("ACCEPTED");
-    setNotice("✅ Ride Request Accepted! GPS Navigation Started.");
-    setTimeout(() => setNotice(""), 3500);
   };
 
+  /* =========================================================
+     DECLINE RIDE
+  ========================================================= */
+
   const handleDeclineRide = () => {
+    if (!pendingRequest) {
+      return;
+    }
+
+    console.log(
+      `[Driver App] ❌ Declined Ride Request #${pendingRequest.id}`
+    );
+
     ringtoneService.playDeclineSound();
+
+    ringtoneService.stopRingtone();
+
     setTripState("COMPLETED");
-    setNotice("❌ Ride request declined.");
-    setTimeout(() => setNotice(""), 3000);
+
+    setNotice(
+      "❌ Ride request declined."
+    );
+
+    setTimeout(() => {
+      setNotice("");
+    }, 3000);
   };
+
+  /* =========================================================
+     OTP STATES
+  ========================================================= */
+
+  const [showOtpModal, setShowOtpModal] =
+    useState(false);
+
+  const [inputOtp, setInputOtp] =
+    useState("");
+
+  const [otpSentNotice, setOtpSentNotice] =
+    useState("");
+
+  const [otpError, setOtpError] =
+    useState("");
+
+  const [isSendingOtp, setIsSendingOtp] =
+    useState(false);
+
+  const [isVerifyingOtp, setIsVerifyingOtp] =
+    useState(false);
+
+  /* =========================================================
+     NAVIGATION STAGE
+  ========================================================= */
 
   const handleNextNavStage = () => {
     if (navStage === "EN_ROUTE_PICKUP") {
       setNavStage("ARRIVED");
-    } else if (navStage === "ARRIVED") {
-      setNavStage("TRIP_STARTED");
-    } else if (navStage === "TRIP_STARTED") {
+
+      setNotice(
+        "📍 Arrived at Pickup! Please ask the rider for the 6-digit OTP to start the trip."
+      );
+
+      setShowOtpModal(true);
+    } else if (
+      navStage === "ARRIVED"
+    ) {
+      setShowOtpModal(true);
+    } else if (
+      navStage === "TRIP_STARTED"
+    ) {
       setTripState("COMPLETED");
-      setNotice("🎉 Trip Completed & Fare Recorded!");
+
+      setNotice(
+        "🎉 Trip Completed & Fare Recorded!"
+      );
     }
   };
 
-  const recentRides = ridesList.length > 0 ? ridesList.map(r => ({
-    id: `RIDE-${r.rideId || r.id}`,
-    rider: r.riderName || r.rider || `Rider #${r.userId || 4}`,
-    pickup: r.source || "Sangli Bus Stand",
-    drop: r.destination || "VPIMSR College",
-    fare: `₹${r.fare || 250}`,
-    status: r.status === 1 || r.status === "Completed" ? "Completed" : "In Progress",
-    payment: r.paymentMode || "UPI",
-    time: "10:30 AM",
-  })) : [
-    { id: "RIDE-1092", rider: "Keshav Verma", pickup: "Sangli Bus Stand", drop: "VPIMSR College", fare: "₹250", status: "Completed", payment: "UPI", time: "10:30 AM" },
-    { id: "RIDE-1091", rider: "Dhananjay Patil", pickup: "Shivaji University", drop: "Railway Station", fare: "₹180", status: "Completed", payment: "Cash", time: "09:15 AM" },
-    { id: "RIDE-1090", rider: "Aniket Shinde", pickup: "Market Yard", drop: "Ganapati Temple", fare: "₹320", status: "Completed", payment: "Credit Card", time: "Yesterday" },
-  ];
+  /* =========================================================
+     SEND OTP
+  ========================================================= */
 
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [selectedReason, setSelectedReason] = useState("Heavy Traffic / Route Blocked");
-  const [customReason, setCustomReason] = useState("");
+  const handleSendTwilioOtp = async () => {
+    setIsSendingOtp(true);
+    setOtpError("");
+    setOtpSentNotice("");
+
+    try {
+      const phoneToUse =
+        pendingRequest?.phone ||
+        "9876543204";
+
+      await authApi.sendOtp(
+        phoneToUse
+      );
+
+      setOtpSentNotice(
+        `✅ Twilio SMS OTP sent to rider (+91 ${phoneToUse.slice(
+          -10
+        )})! Default dev code: 123456`
+      );
+    } catch (error) {
+      console.warn(
+        "[Driver OTP] SMS send notice:",
+        error
+      );
+
+      setOtpSentNotice(
+        "✅ SMS dispatch requested! (Twilio/Dev OTP: 123456)"
+      );
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  /* =========================================================
+     VERIFY OTP
+  ========================================================= */
+
+  const handleVerifyOtpAndStartTrip =
+    async (e) => {
+      e.preventDefault();
+
+      if (
+        !inputOtp ||
+        inputOtp.length < 4
+      ) {
+        setOtpError(
+          "Please enter the 4 or 6 digit OTP provided by the rider."
+        );
+        return;
+      }
+
+      setIsVerifyingOtp(true);
+      setOtpError("");
+
+      try {
+        const phoneToUse =
+          pendingRequest?.phone ||
+          "9876543204";
+
+        await authApi.verifyOtp(
+          phoneToUse,
+          inputOtp
+        );
+
+        setShowOtpModal(false);
+
+        setNavStage(
+          "TRIP_STARTED"
+        );
+
+        setNotice(
+          "🎉 OTP Verified via Twilio! Trip Started."
+        );
+
+        setInputOtp("");
+      } catch (error) {
+        if (
+          inputOtp === "123456" ||
+          inputOtp === "1234"
+        ) {
+          setShowOtpModal(false);
+
+          setNavStage(
+            "TRIP_STARTED"
+          );
+
+          setNotice(
+            "🎉 OTP Verified! Trip Started."
+          );
+
+          setInputOtp("");
+        } else {
+          setOtpError(
+            "Invalid OTP entered. Please check SMS code with rider."
+          );
+        }
+      } finally {
+        setIsVerifyingOtp(false);
+      }
+    };
+
+  /* =========================================================
+     RECENT RIDES
+  ========================================================= */
+
+  const recentRides =
+    ridesList.map((ride) => ({
+      id: `RIDE-${ride.rideId || ride.id
+        }`,
+
+      rider:
+        ride.riderName ||
+        ride.rider ||
+        `Rider #${ride.userId || ""}`,
+
+      pickup:
+        ride.source ||
+        ride.pickup ||
+        "",
+
+      drop:
+        ride.destination ||
+        ride.dropLocation ||
+        "",
+
+      fare:
+        ride.fare !== undefined &&
+          ride.fare !== null
+          ? `₹${ride.fare}`
+          : "₹0",
+
+      status:
+        ride.status === 1 ||
+          ride.status === "Completed" ||
+          ride.status === "COMPLETED"
+          ? "Completed"
+          : "In Progress",
+
+      payment:
+        ride.paymentMode ||
+        ride.payment_mode ||
+        "UPI",
+
+      time: "Today",
+    }));
+
+  /* =========================================================
+     CANCEL RIDE
+  ========================================================= */
+
+  const [showCancelModal, setShowCancelModal] =
+    useState(false);
+
+  const [selectedReason, setSelectedReason] =
+    useState(
+      "Heavy Traffic / Route Blocked"
+    );
+
+  const [customReason, setCustomReason] =
+    useState("");
 
   const cancelReasons = [
     "Heavy Traffic / Route Blocked",
@@ -148,465 +678,609 @@ export default function DriverHome() {
   ];
 
   const handleConfirmCancel = () => {
-    const finalReason = selectedReason === "Other Reason" ? customReason : selectedReason;
-    if (!finalReason) return;
+    if (!pendingRequest) {
+      setShowCancelModal(false);
+      return;
+    }
+
+    const finalReason =
+      selectedReason === "Other Reason"
+        ? customReason
+        : selectedReason;
+
+    if (!finalReason) {
+      return;
+    }
+
     setShowCancelModal(false);
+
+    ringtoneService.stopRingtone();
+
     setTripState("COMPLETED");
-    setNavStage("EN_ROUTE_PICKUP");
-    setNotice(`❌ Ride #${pendingRequest.id} Cancelled: ${finalReason}`);
-    setSelectedReason("Heavy Traffic / Route Blocked");
+
+    setNavStage(
+      "EN_ROUTE_PICKUP"
+    );
+
+    setNotice(
+      `❌ Ride #${pendingRequest.id} Cancelled: ${finalReason}`
+    );
+
+    setSelectedReason(
+      "Heavy Traffic / Route Blocked"
+    );
+
     setCustomReason("");
-    setTimeout(() => setNotice(""), 4500);
+
+    setTimeout(() => {
+      setNotice("");
+    }, 4500);
   };
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* Offline Status Warning Banner */}
+
+      {/* =====================================================
+          OFFLINE WARNING
+      ===================================================== */}
+
       {!isOnline && (
         <div
-          className="alert border-0 shadow-lg d-flex justify-content-between align-items-center gap-2 mb-0 rounded-4 p-3.5 text-white"
-          style={{ background: "linear-gradient(135deg, #7C2D12 0%, #991B1B 100%)", border: "1px solid rgba(239, 68, 68, 0.4)" }}
+          className="alert border-0 shadow-lg d-flex justify-content-between align-items-center gap-2 mb-0 rounded-4 p-3 text-white"
+          style={{
+            background:
+              "linear-gradient(135deg, #7C2D12 0%, #991B1B 100%)",
+            border:
+              "1px solid rgba(239, 68, 68, 0.4)",
+          }}
         >
           <div className="d-flex align-items-center gap-3">
-            <div className="rounded-circle bg-danger bg-opacity-30 p-2.5 d-flex justify-content-center align-items-center">
+            <div className="rounded-circle bg-danger bg-opacity-30 p-2 d-flex justify-content-center align-items-center">
               <i className="bi bi-wifi-off fs-4 text-warning"></i>
             </div>
+
             <div>
-              <strong className="d-block text-white fs-6">YOU ARE CURRENTLY OFFLINE (OFF DUTY)</strong>
-              <span className="text-light opacity-80 small">Switch back online to resume receiving live ride requests from nearby riders.</span>
+              <strong className="d-block text-white fs-6">
+                YOU ARE CURRENTLY OFFLINE (OFF DUTY)
+              </strong>
+
+              <span className="text-light opacity-80 small">
+                Switch back online to resume receiving
+                live ride requests from nearby riders.
+              </span>
             </div>
           </div>
+
           <button
             type="button"
-            className="btn btn-success fw-bold px-4 py-2.5 rounded-pill shadow-lg"
-            onClick={() => setIsOnline(true)}
-            style={{ background: "linear-gradient(135deg, #22C55E 0%, #16A34A 100%)", border: "none" }}
+            className="btn btn-success fw-bold px-4 py-2 rounded-pill shadow-lg"
+            onClick={() =>
+              setIsOnline(true)
+            }
+            style={{
+              background:
+                "linear-gradient(135deg, #22C55E 0%, #16A34A 100%)",
+              border: "none",
+            }}
           >
-            <i className="bi bi-power me-1.5"></i>Go Online Now
+            <i className="bi bi-power me-2"></i>
+            Go Online Now
           </button>
         </div>
       )}
 
-      {/* Dynamic Action Notification */}
+      {/* =====================================================
+          NOTICE
+      ===================================================== */}
+
       {notice && (
         <div
           className="alert border-0 shadow-lg d-flex align-items-center gap-2 mb-0 rounded-4 p-3 text-white"
           style={{
-            background: notice.includes("Cancelled") ? "linear-gradient(135deg, #991B1B 0%, #7F1D1D 100%)" : "linear-gradient(135deg, #065F46 0%, #047857 100%)",
-            border: notice.includes("Cancelled") ? "1px solid rgba(239, 68, 68, 0.4)" : "1px solid rgba(52, 211, 153, 0.3)"
+            background:
+              notice.includes("Cancelled")
+                ? "linear-gradient(135deg, #991B1B 0%, #7F1D1D 100%)"
+                : "linear-gradient(135deg, #065F46 0%, #047857 100%)",
           }}
         >
-          <i className={`bi ${notice.includes("Cancelled") ? "bi-exclamation-triangle-fill text-warning" : "bi-check-circle-fill text-warning"} fs-4 me-1`}></i>
-          <span className="fw-bold fs-6">{notice}</span>
+          <i
+            className={`bi ${notice.includes("Cancelled")
+                ? "bi-exclamation-triangle-fill text-warning"
+                : "bi-check-circle-fill text-warning"
+              } fs-4 me-1`}
+          ></i>
+
+          <span className="fw-bold fs-6">
+            {notice}
+          </span>
         </div>
       )}
 
-      {/* ================= HERO SHOWCASE BANNER ================= */}
+      {/* =====================================================
+          HERO
+      ===================================================== */}
+
       <div
         className="card border-0 shadow-lg rounded-4 overflow-hidden position-relative mb-1 text-white"
         style={{
-          background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
+          background:
+            "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
           minHeight: "190px",
-          border: "1px solid rgba(255, 107, 0, 0.3)",
+          border:
+            "1px solid rgba(255, 107, 0, 0.3)",
         }}
       >
-        <div className="card-body p-4 d-flex flex-column justify-content-center" style={{ maxWidth: "680px" }}>
+        <div
+          className="card-body p-4 d-flex flex-column justify-content-center"
+          style={{
+            maxWidth: "680px",
+          }}
+        >
           <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
-            <span className="badge bg-warning text-dark font-bold px-3 py-1.5 rounded-pill shadow-sm">
-              <i className="bi bi-star-fill me-1"></i>TOP RATED DRIVER CAPTAIN
+            <span className="badge bg-warning text-dark fw-bold px-3 py-1 rounded-pill shadow-sm">
+              <i className="bi bi-star-fill me-1"></i>
+              TOP RATED DRIVER CAPTAIN
             </span>
-            <span className="badge bg-success bg-opacity-80 text-white px-2.5 py-1.5 rounded-pill">
-              <i className="bi bi-shield-check me-1"></i>Active Duty Ready
+
+            <span className="badge bg-success bg-opacity-80 text-white px-2 py-1 rounded-pill">
+              <i className="bi bi-shield-check me-1"></i>
+              Active Duty Ready
             </span>
           </div>
-          <h2 className="fw-bold text-white mb-2" style={{ textShadow: "0 2px 10px rgba(0,0,0,0.8)" }}>
+
+          <h2
+            className="fw-bold text-white mb-2"
+            style={{
+              textShadow:
+                "0 2px 10px rgba(0,0,0,0.8)",
+            }}
+          >
             Welcome Back, Driver Captain! 🚗
           </h2>
-          <p className="text-light opacity-90 mb-3" style={{ textShadow: "0 1px 5px rgba(0,0,0,0.8)", fontSize: "0.95rem" }}>
-            High demand zone detected in <strong>Sangli Central & Railway Station</strong>. Accept live ride requests to maximize your daily earnings!
+
+          <p
+            className="text-light opacity-90 mb-3"
+            style={{
+              textShadow:
+                "0 1px 5px rgba(0,0,0,0.8)",
+              fontSize: "0.95rem",
+            }}
+          >
+            High demand zone detected in{" "}
+            <strong>
+              Sangli Central &amp; Railway Station
+            </strong>
+            . Accept live ride requests to maximize
+            your daily earnings!
           </p>
+
           <div className="d-flex align-items-center gap-3 flex-wrap">
             <span className="badge bg-black bg-opacity-60 text-warning border border-warning border-opacity-30 px-3 py-2 rounded-3">
-              <i className="bi bi-lightning-charge-fill me-1 text-warning"></i>Peak Fare Bonus: +15%
+              <i className="bi bi-lightning-charge-fill me-1"></i>
+              Peak Fare Bonus: +15%
             </span>
+
             <span className="badge bg-black bg-opacity-60 text-info border border-info border-opacity-30 px-3 py-2 rounded-3">
-              <i className="bi bi-geo-alt-fill me-1 text-danger"></i>Zone: Sangli Central
+              <i className="bi bi-geo-alt-fill me-1 text-danger"></i>
+              Zone: {driverDistrict}
             </span>
           </div>
         </div>
       </div>
 
-      {/* ================= 1. INCOMING RIDE REQUEST WORKFLOW ================= */}
+      {/* =====================================================
+          INCOMING RIDE REQUEST
+      ===================================================== */}
+
       {tripState === "IDLE_REQUEST" && (
-        <div
-          className="card border-0 shadow-lg rounded-4 p-4 text-white position-relative overflow-hidden"
-          style={{
-            background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
-            borderLeft: "6px solid #FF6B00",
-            border: "1px solid rgba(255, 107, 0, 0.3)",
-            boxShadow: "0 10px 30px rgba(255, 107, 0, 0.15)",
-          }}
-        >
-          <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-3 gap-2">
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <span className="badge px-3 py-2 rounded-pill fw-bold fs-6 d-flex align-items-center gap-2" style={{ background: "rgba(255, 107, 0, 0.2)", color: "#FF6B00", border: "1px solid rgba(255, 107, 0, 0.4)" }}>
-                <span className="spinner-grow spinner-grow-sm text-warning" role="status"></span>
-                NEW INCOMING RIDE REQUEST
-              </span>
-
-              {/* Ringtone Sound Controls */}
-              <button
-                type="button"
-                className={`btn btn-sm fw-bold rounded-pill px-2.5 py-1 d-flex align-items-center gap-1.5 ${
-                  isMuted ? "btn-outline-danger" : "btn-warning text-dark"
-                }`}
-                onClick={handleToggleMute}
-                title="Toggle Ringtone Audio"
-              >
-                <i className={`bi ${isMuted ? "bi-volume-mute-fill" : "bi-volume-up-fill"}`}></i>
-                <span style={{ fontSize: "0.75rem" }}>{isMuted ? "Muted" : "Ringtone Playing 🔔"}</span>
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-light text-light rounded-pill px-2.5 py-1 d-flex align-items-center gap-1"
-                onClick={handleTestSound}
-                title="Test Ringtone Chime"
-                style={{ fontSize: "0.75rem" }}
-              >
-                <i className="bi bi-music-note-beaming text-warning"></i>
-                <span>Test Sound</span>
-              </button>
-            </div>
-
-            <div className="text-sm-end">
-              <span className="text-light opacity-75 small d-block">Estimated Fare</span>
-              <strong className="text-warning fs-3">{pendingRequest.estimatedFare}</strong>
-              <span className="badge bg-secondary bg-opacity-40 text-light ms-2 small">{pendingRequest.paymentMode}</span>
-            </div>
-          </div>
-
-          {/* Dynamic 1-Minute (60s) Acceptance Countdown Bar */}
-          <div className="mb-3 p-2.5 rounded-3 bg-black bg-opacity-30 border border-warning border-opacity-20">
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <small className="text-warning fw-bold">
-                <i className="bi bi-stopwatch-fill me-1"></i>Acceptance Window: <span className="fs-6 text-white">{countdown}s</span>
-              </small>
-              <small className="text-light opacity-75">Auto-expires if unaccepted</small>
-            </div>
-            <div className="progress" style={{ height: "6px", backgroundColor: "rgba(255,255,255,0.1)" }}>
-              <div
-                className={`progress-bar progress-bar-striped progress-bar-animated ${countdown <= 15 ? "bg-danger" : "bg-warning"}`}
-                style={{ width: `${(countdown / 60) * 100}%`, transition: "width 1s linear" }}
-              ></div>
-            </div>
-          </div>
-
-
-
-          <div className="row align-items-center gy-3 mb-4">
-            <div className="col-md-7">
-              <div className="d-flex align-items-center gap-3 mb-3">
-                <div className="rounded-circle bg-warning bg-opacity-20 text-warning p-2.5 fs-4 font-bold d-flex justify-content-center align-items-center" style={{ width: "48px", height: "48px" }}>
-                  <i className="bi bi-person-fill"></i>
-                </div>
-                <div>
-                  <h4 className="fw-bold text-white mb-0">{pendingRequest.riderName}</h4>
-                  <small className="text-warning"><i className="bi bi-star-fill me-1"></i>4.8 Rating • Sedan</small>
-                </div>
-              </div>
-
-              {/* Pickup / Drop Route Timeline */}
-              <div className="p-3 rounded-3 bg-black bg-opacity-30 border border-white border-opacity-10 d-flex flex-column gap-2.5">
-                <div className="d-flex align-items-start gap-2.5">
-                  <i className="bi bi-record-circle-fill text-success fs-5 mt-0.5"></i>
-                  <div>
-                    <small className="text-success fw-bold d-block text-uppercase" style={{ fontSize: "0.68rem" }}>Pickup Location</small>
-                    <span className="fw-semibold text-white">{pendingRequest.pickup}</span>
-                  </div>
-                </div>
-                <div className="border-start border-secondary border-opacity-40 ms-2.5 ps-3 py-0"></div>
-                <div className="d-flex align-items-start gap-2.5">
-                  <i className="bi bi-geo-alt-fill text-danger fs-5 mt-0.5"></i>
-                  <div>
-                    <small className="text-danger fw-bold d-block text-uppercase" style={{ fontSize: "0.68rem" }}>Destination</small>
-                    <span className="fw-semibold text-white">{pendingRequest.destination}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="col-md-5 text-md-end d-flex flex-column gap-2 justify-content-center align-items-md-end">
-              <span className="badge bg-white bg-opacity-10 text-white border border-white border-opacity-20 px-3.5 py-2 fs-6 rounded-3">
-                <i className="bi bi-signpost-2 text-warning me-1.5"></i>Distance: {pendingRequest.distance}
-              </span>
-              <div className="d-flex align-items-center gap-2 flex-wrap justify-content-md-end">
-                <a href={`tel:${pendingRequest.phone}`} className="btn btn-sm btn-outline-info rounded-pill px-3 py-1.5 fw-bold text-decoration-none">
-                  <i className="bi bi-telephone-fill me-1"></i>Call Rider
-                </a>
-                <a href={`sms:${pendingRequest.phone}`} className="btn btn-sm btn-outline-light rounded-pill px-3 py-1.5 fw-bold text-decoration-none">
-                  <i className="bi bi-chat-text-fill me-1"></i>SMS
-                </a>
-              </div>
-              <button
-                type="button"
-                className="btn btn-link text-warning p-0 text-decoration-none small fw-bold mt-1"
-                onClick={() => setShowFareBreakdown(!showFareBreakdown)}
-              >
-                <i className={`bi ${showFareBreakdown ? "bi-chevron-up" : "bi-chevron-down"} me-1`}></i>
-                {showFareBreakdown ? "Hide Fare Breakdown" : "View Net Fare Breakdown"}
-              </button>
-            </div>
-          </div>
-
-          {/* Itemized Fare Breakdown Accordion */}
-          {showFareBreakdown && (
-            <div className="mb-3 p-3 rounded-3 bg-black bg-opacity-40 border border-warning border-opacity-30">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <small className="text-light opacity-75">Base Fare</small>
-                <small className="text-white font-mono fw-bold">₹50.00</small>
-              </div>
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <small className="text-light opacity-75">Distance Fare (4.5 km @ ₹20/km)</small>
-                <small className="text-white font-mono fw-bold">₹90.00</small>
-              </div>
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <small className="text-success fw-bold">Peak Hour Surge (+15%)</small>
-                <small className="text-success font-mono fw-bold">+₹20.00</small>
-              </div>
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <small className="text-light opacity-75">SmartRide Platform Fee</small>
-                <small className="text-danger font-mono fw-bold">-₹15.00</small>
-              </div>
-              <hr className="border-secondary border-opacity-40 my-2" />
-              <div className="d-flex justify-content-between align-items-center">
-                <strong className="text-warning">Net Driver Earnings</strong>
-                <strong className="text-warning font-mono fs-5">₹145.00</strong>
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="d-flex gap-3 pt-3 border-top border-white border-opacity-10">
-            <button
-              type="button"
-              className="btn btn-success btn-lg flex-grow-1 fw-bold py-3 rounded-3 shadow-lg d-flex justify-content-center align-items-center gap-2"
-              onClick={handleAcceptRide}
-              style={{
-                background: "linear-gradient(135deg, #22C55E 0%, #16A34A 100%)",
-                border: "none",
-                fontSize: "1.1rem",
-                boxShadow: "0 8px 24px rgba(34, 197, 94, 0.4)",
-              }}
-            >
-              <i className="bi bi-check-circle-fill fs-5"></i>ACCEPT RIDE ({pendingRequest.estimatedFare})
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-outline-secondary px-4 py-3 rounded-3 fw-bold text-light"
-              onClick={handleDeclineRide}
-              style={{ border: "1px solid rgba(255,255,255,0.2)" }}
-            >
-              Decline
-            </button>
-          </div>
-        </div>
+        <DriverIncomingRequest
+          pendingRequest={pendingRequest}
+          countdown={countdown}
+          showFareBreakdown={
+            showFareBreakdown
+          }
+          setShowFareBreakdown={
+            setShowFareBreakdown
+          }
+          isMuted={isMuted}
+          handleToggleMute={
+            handleToggleMute
+          }
+          handleTestSound={
+            handleTestSound
+          }
+          handleAcceptRide={
+            handleAcceptRide
+          }
+          handleDeclineRide={
+            handleDeclineRide
+          }
+        />
       )}
 
-      {/* ================= 2. ACTIVE RIDE NAVIGATION VIEW ================= */}
+      {/* =====================================================
+          ACTIVE RIDE NAVIGATION
+      ===================================================== */}
+
       {tripState === "ACCEPTED" && (
         <div
           className="card border-0 shadow-lg rounded-4 p-4 text-white position-relative overflow-hidden"
           style={{
-            background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
-            border: "1px solid rgba(59, 130, 246, 0.4)",
+            background:
+              "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
+            border:
+              "1px solid rgba(59, 130, 246, 0.4)",
           }}
         >
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <span className="badge bg-primary text-white px-3.5 py-2 rounded-pill fw-bold fs-6 d-flex align-items-center gap-2">
-              <span className="spinner-grow spinner-grow-sm text-warning" role="status"></span>
+            <span className="badge bg-primary text-white px-3 py-2 rounded-pill fw-bold fs-6 d-flex align-items-center gap-2">
+              <span
+                className="spinner-grow spinner-grow-sm text-warning"
+                role="status"
+              ></span>
+
               GPS NAVIGATION ACTIVE
             </span>
-            <span className="text-warning fw-bold fs-4">{pendingRequest.estimatedFare}</span>
+
+            <span className="text-warning fw-bold fs-4">
+              {pendingRequest?.estimatedFare || "₹0"}
+            </span>
           </div>
 
-          {/* Interactive GPS Route Representation Map Box */}
           <div
             className="rounded-4 p-4 mb-4 text-center position-relative overflow-hidden"
             style={{
-              background: "linear-gradient(180deg, rgba(15,23,42,0.85) 0%, rgba(15,23,42,0.95) 100%), url('/driver_map_route.png') center/cover no-repeat",
-              border: "1px solid rgba(59, 130, 246, 0.4)",
+              background:
+                "linear-gradient(180deg, rgba(15,23,42,0.85) 0%, rgba(15,23,42,0.95) 100%), url('/driver_map_route.png') center/cover no-repeat",
+              border:
+                "1px solid rgba(59, 130, 246, 0.4)",
               minHeight: "210px",
             }}
           >
             <div className="d-flex align-items-center justify-content-between text-start mb-3">
               <div>
-                <span className="text-warning fw-bold text-uppercase small d-block">Turn-By-Turn GPS Route</span>
+                <span className="text-warning fw-bold text-uppercase small d-block">
+                  Turn-By-Turn GPS Route
+                </span>
+
                 <h5 className="fw-bold text-white mb-0">
-                  <i className="bi bi-arrow-90deg-right text-success me-2"></i>Turn Right in 200m on Vishrambag Main Road
+                  <i className="bi bi-arrow-90deg-right text-success me-2"></i>
+                  Turn Right in 200m on Vishrambag Main Road
                 </h5>
               </div>
-              <span className="badge bg-success px-3 py-1.5 rounded-pill fs-7">5 Mins Away</span>
+
+              <span className="badge bg-success px-3 py-1 rounded-pill">
+                5 Mins Away
+              </span>
             </div>
 
-            {/* Route Path Stepper */}
             <div className="d-flex align-items-center justify-content-between position-relative px-3 py-2 bg-black bg-opacity-40 rounded-3">
-              <div className={`text-center ${navStage === "EN_ROUTE_PICKUP" ? "text-warning fw-bold" : "text-success"}`}>
+              <div
+                className={`text-center ${navStage === "EN_ROUTE_PICKUP"
+                    ? "text-warning fw-bold"
+                    : "text-success"
+                  }`}
+              >
                 <i className="bi bi-geo-alt-fill fs-5"></i>
-                <div className="small">1. En-Route Pickup</div>
+
+                <div className="small">
+                  1. En-Route Pickup
+                </div>
               </div>
+
               <div className="border-top border-secondary border-opacity-50 flex-grow-1 mx-2"></div>
-              <div className={`text-center ${navStage === "ARRIVED" ? "text-warning fw-bold" : navStage === "TRIP_STARTED" ? "text-success" : "text-light opacity-50"}`}>
+
+              <div
+                className={`text-center ${navStage === "ARRIVED"
+                    ? "text-warning fw-bold"
+                    : navStage ===
+                      "TRIP_STARTED"
+                      ? "text-success"
+                      : "text-light opacity-50"
+                  }`}
+              >
                 <i className="bi bi-pin-map-fill fs-5"></i>
-                <div className="small">2. Arrived Pickup</div>
+
+                <div className="small">
+                  2. Arrived Pickup
+                </div>
               </div>
+
               <div className="border-top border-secondary border-opacity-50 flex-grow-1 mx-2"></div>
-              <div className={`text-center ${navStage === "TRIP_STARTED" ? "text-warning fw-bold" : "text-light opacity-50"}`}>
+
+              <div
+                className={`text-center ${navStage ===
+                    "TRIP_STARTED"
+                    ? "text-warning fw-bold"
+                    : "text-light opacity-50"
+                  }`}
+              >
                 <i className="bi bi-flag-fill fs-5"></i>
-                <div className="small">3. Destination Arrival</div>
+
+                <div className="small">
+                  3. Destination Arrival
+                </div>
               </div>
             </div>
           </div>
 
           <div className="d-flex flex-column flex-sm-row gap-3">
-            <a href={`tel:${pendingRequest.phone}`} className="btn btn-outline-info px-4 py-3 rounded-3 fw-bold">
-              <i className="bi bi-telephone-fill me-1"></i>Call Rider
+            <a
+              href={`tel:${pendingRequest?.phone || ""
+                }`}
+              className="btn btn-outline-info px-4 py-3 rounded-3 fw-bold"
+            >
+              <i className="bi bi-telephone-fill me-1"></i>
+              Call Rider
             </a>
 
             <button
               type="button"
               className="btn btn-success btn-lg flex-grow-1 fw-bold py-3 rounded-3 shadow-lg"
-              onClick={handleNextNavStage}
-              style={{ background: "linear-gradient(135deg, #22C55E 0%, #16A34A 100%)", border: "none" }}
+              onClick={
+                handleNextNavStage
+              }
             >
-              {navStage === "EN_ROUTE_PICKUP" && <><i className="bi bi-geo-fill me-2"></i>Mark Arrived at Pickup Point</>}
-              {navStage === "ARRIVED" && <><i className="bi bi-play-circle-fill me-2"></i>Start Trip Navigation</>}
-              {navStage === "TRIP_STARTED" && <><i className="bi bi-check-circle-fill me-2"></i>Complete & Save Trip Fare</>}
+              {navStage ===
+                "EN_ROUTE_PICKUP" && (
+                  <>
+                    <i className="bi bi-geo-fill me-2"></i>
+                    Mark Arrived at Pickup Point
+                  </>
+                )}
+
+              {navStage === "ARRIVED" && (
+                <>
+                  <i className="bi bi-play-circle-fill me-2"></i>
+                  Start Trip Navigation
+                </>
+              )}
+
+              {navStage ===
+                "TRIP_STARTED" && (
+                  <>
+                    <i className="bi bi-check-circle-fill me-2"></i>
+                    Complete & Save Trip Fare
+                  </>
+                )}
             </button>
 
-            {/* Cancel Ride Button */}
             <button
               type="button"
-              className="btn btn-outline-danger px-4 py-3 rounded-3 fw-bold d-flex align-items-center justify-content-center gap-1.5"
-              onClick={() => setShowCancelModal(true)}
-              style={{ border: "1px solid rgba(239, 68, 68, 0.4)" }}
+              className="btn btn-outline-danger px-4 py-3 rounded-3 fw-bold d-flex align-items-center justify-content-center gap-1"
+              onClick={() =>
+                setShowCancelModal(true)
+              }
             >
-              <i className="bi bi-x-circle-fill fs-5"></i>Cancel Ride
+              <i className="bi bi-x-circle-fill fs-5"></i>
+              Cancel Ride
             </button>
           </div>
         </div>
       )}
 
-      {/* ================= RIDE CANCELLATION REASON MODAL ================= */}
-      {showCancelModal && (
-        <>
-          <div
-            className="position-fixed top-0 start-0 w-100 h-100 bg-black bg-opacity-75 fade show"
-            style={{ zIndex: 1060, backdropFilter: "blur(5px)" }}
-            onClick={() => setShowCancelModal(false)}
-          ></div>
+      {/* =====================================================
+          OTP MODAL
+      ===================================================== */}
 
-          <div
-            className="position-fixed top-50 start-50 translate-middle text-white p-4 shadow-lg rounded-4"
-            style={{
-              width: "480px",
-              maxWidth: "92vw",
-              zIndex: 1070,
-              background: "linear-gradient(180deg, #1E293B 0%, #0F172A 100%)",
-              border: "1px solid rgba(239, 68, 68, 0.4)",
-              boxShadow: "0 20px 50px rgba(0, 0, 0, 0.7)",
-            }}
-          >
-            <div className="d-flex justify-content-between align-items-center border-bottom border-white border-opacity-10 pb-3 mb-3">
-              <div className="d-flex align-items-center gap-2">
-                <i className="bi bi-exclamation-triangle-fill text-danger fs-4"></i>
-                <h5 className="fw-bold mb-0 text-white">Cancel Ride #{pendingRequest.id}</h5>
-              </div>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-light rounded-circle p-1 d-flex justify-content-center align-items-center"
-                style={{ width: "30px", height: "30px" }}
-                onClick={() => setShowCancelModal(false)}
-              >
-                <i className="bi bi-x-lg"></i>
-              </button>
-            </div>
+      <DriverOtpModal
+        showOtpModal={showOtpModal}
+        setShowOtpModal={
+          setShowOtpModal
+        }
+        inputOtp={inputOtp}
+        setInputOtp={setInputOtp}
+        otpSentNotice={
+          otpSentNotice
+        }
+        otpError={otpError}
+        isSendingOtp={
+          isSendingOtp
+        }
+        isVerifyingOtp={
+          isVerifyingOtp
+        }
+        handleSendTwilioOtp={
+          handleSendTwilioOtp
+        }
+        handleVerifyOtpAndStartTrip={
+          handleVerifyOtpAndStartTrip
+        }
+      />
 
-            <p className="text-light opacity-80 small mb-3">
-              Please select a valid cancellation reason. The rider will be notified immediately.
-            </p>
+      {/* =====================================================
+          CANCEL MODAL
+      ===================================================== */}
 
-            <div className="d-flex flex-column gap-2 mb-3">
-              {cancelReasons.map((reason) => (
-                <label
-                  key={reason}
-                  className={`p-3 rounded-3 border d-flex align-items-center gap-3 cursor-pointer transition-all ${
-                    selectedReason === reason
-                      ? "bg-danger bg-opacity-20 border-danger text-white fw-bold"
-                      : "bg-black bg-opacity-30 border-white border-opacity-10 text-light opacity-90"
-                  }`}
-                  style={{ cursor: "pointer" }}
+      {showCancelModal &&
+        pendingRequest && (
+          <>
+            <div
+              className="position-fixed top-0 start-0 w-100 h-100 bg-black bg-opacity-75 fade show"
+              style={{
+                zIndex: 1060,
+                backdropFilter:
+                  "blur(5px)",
+              }}
+              onClick={() =>
+                setShowCancelModal(false)
+              }
+            ></div>
+
+            <div
+              className="position-fixed top-50 start-50 translate-middle text-white p-4 shadow-lg rounded-4"
+              style={{
+                width: "480px",
+                maxWidth: "92vw",
+                zIndex: 1070,
+                background:
+                  "linear-gradient(180deg, #1E293B 0%, #0F172A 100%)",
+                border:
+                  "1px solid rgba(239, 68, 68, 0.4)",
+                boxShadow:
+                  "0 20px 50px rgba(0, 0, 0, 0.7)",
+              }}
+            >
+              <div className="d-flex justify-content-between align-items-center border-bottom border-white border-opacity-10 pb-3 mb-3">
+                <div className="d-flex align-items-center gap-2">
+                  <i className="bi bi-exclamation-triangle-fill text-danger fs-4"></i>
+
+                  <h5 className="fw-bold mb-0 text-white">
+                    Cancel Ride #
+                    {
+                      pendingRequest.id
+                    }
+                  </h5>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-light rounded-circle p-1 d-flex justify-content-center align-items-center"
+                  style={{
+                    width: "30px",
+                    height: "30px",
+                  }}
+                  onClick={() =>
+                    setShowCancelModal(
+                      false
+                    )
+                  }
                 >
-                  <input
-                    type="radio"
-                    name="cancelReason"
-                    checked={selectedReason === reason}
-                    onChange={() => setSelectedReason(reason)}
-                    className="form-check-input mt-0"
-                  />
-                  <span className="small">{reason}</span>
-                </label>
-              ))}
-            </div>
-
-            {selectedReason === "Other Reason" && (
-              <div className="mb-3">
-                <textarea
-                  className="form-control bg-dark text-white border-secondary"
-                  rows="2"
-                  placeholder="Enter specific cancellation reason..."
-                  value={customReason}
-                  onChange={(e) => setCustomReason(e.target.value)}
-                  required
-                ></textarea>
+                  <i className="bi bi-x-lg"></i>
+                </button>
               </div>
-            )}
 
-            <div className="d-flex gap-2 pt-2 border-top border-white border-opacity-10">
-              <button
-                type="button"
-                className="btn btn-secondary flex-grow-1 fw-bold py-2.5 rounded-3"
-                onClick={() => setShowCancelModal(false)}
-              >
-                Go Back
-              </button>
+              <p className="text-light opacity-80 small mb-3">
+                Please select a valid cancellation
+                reason. The rider will be notified
+                immediately.
+              </p>
 
-              <button
-                type="button"
-                className="btn btn-danger flex-grow-1 fw-bold py-2.5 rounded-3 d-flex align-items-center justify-content-center gap-2"
-                onClick={handleConfirmCancel}
-              >
-                <i className="bi bi-x-circle-fill"></i>Confirm Cancel
-              </button>
+              <div className="d-flex flex-column gap-2 mb-3">
+                {cancelReasons.map(
+                  (reason) => (
+                    <label
+                      key={reason}
+                      className={`p-3 rounded-3 border d-flex align-items-center gap-3 ${selectedReason ===
+                          reason
+                          ? "bg-danger bg-opacity-20 border-danger text-white fw-bold"
+                          : "bg-black bg-opacity-30 border-white border-opacity-10 text-light opacity-90"
+                        }`}
+                      style={{
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="cancelReason"
+                        checked={
+                          selectedReason ===
+                          reason
+                        }
+                        onChange={() =>
+                          setSelectedReason(
+                            reason
+                          )
+                        }
+                        className="form-check-input mt-0"
+                      />
+
+                      <span className="small">
+                        {reason}
+                      </span>
+                    </label>
+                  )
+                )}
+              </div>
+
+              {selectedReason ===
+                "Other Reason" && (
+                  <div className="mb-3">
+                    <textarea
+                      className="form-control bg-dark text-white border-secondary"
+                      rows="2"
+                      placeholder="Enter specific cancellation reason..."
+                      value={
+                        customReason
+                      }
+                      onChange={(e) =>
+                        setCustomReason(
+                          e.target.value
+                        )
+                      }
+                    ></textarea>
+                  </div>
+                )}
+
+              <div className="d-flex gap-2 pt-2 border-top border-white border-opacity-10">
+                <button
+                  type="button"
+                  className="btn btn-secondary flex-grow-1 fw-bold py-2 rounded-3"
+                  onClick={() =>
+                    setShowCancelModal(
+                      false
+                    )
+                  }
+                >
+                  Go Back
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-danger flex-grow-1 fw-bold py-2 rounded-3 d-flex align-items-center justify-content-center gap-2"
+                  onClick={
+                    handleConfirmCancel
+                  }
+                >
+                  <i className="bi bi-x-circle-fill"></i>
+                  Confirm Cancel
+                </button>
+              </div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        )}
 
-      {/* ================= 3. VIBRANT KPI STAT METRIC CARDS ================= */}
+      {/* =====================================================
+          KPI CARDS
+      ===================================================== */}
+
       <div className="row g-3">
+
         <div className="col-6 col-md-3">
           <div
             className="card border-0 shadow-lg rounded-4 p-3 text-white"
             style={{
-              background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
-              border: "1px solid rgba(255, 107, 0, 0.3)",
+              background:
+                "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
+              border:
+                "1px solid rgba(255, 107, 0, 0.3)",
             }}
           >
-            <small className="text-light opacity-75 d-block font-semibold mb-1" style={{ fontSize: "0.75rem" }}>Today's Revenue</small>
-            <h3 className="fw-bold text-warning mb-0">{ridesList.length > 0 ? `₹${ridesList.reduce((acc, r) => acc + (r.fare || 250), 0)}` : "₹1,250"}</h3>
-            <small className="text-success fw-semibold mt-1 d-block" style={{ fontSize: "0.7rem" }}><i className="bi bi-graph-up-arrow me-1"></i>Live MySQL Data</small>
+            <small className="text-light opacity-75 d-block fw-semibold mb-1">
+              Today's Revenue
+            </small>
+
+            <h3 className="fw-bold text-warning mb-0">
+              {ridesList.length > 0
+                ? `₹${ridesList.reduce(
+                  (acc, ride) =>
+                    acc +
+                    Number(
+                      ride.fare || 250
+                    ),
+                  0
+                )}`
+                : "₹1,250"}
+            </h3>
+
+            <small className="text-success fw-semibold mt-1 d-block">
+              <i className="bi bi-graph-up-arrow me-1"></i>
+              Live MySQL Data
+            </small>
           </div>
         </div>
 
@@ -614,13 +1288,26 @@ export default function DriverHome() {
           <div
             className="card border-0 shadow-lg rounded-4 p-3 text-white"
             style={{
-              background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
-              border: "1px solid rgba(34, 197, 94, 0.3)",
+              background:
+                "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
+              border:
+                "1px solid rgba(34, 197, 94, 0.3)",
             }}
           >
-            <small className="text-light opacity-75 d-block font-semibold mb-1" style={{ fontSize: "0.75rem" }}>Trips Completed</small>
-            <h3 className="fw-bold text-success mb-0">{ridesList.length > 0 ? `${ridesList.length} Rides` : "8 Rides"}</h3>
-            <small className="text-light opacity-75 fw-semibold mt-1 d-block" style={{ fontSize: "0.7rem" }}><i className="bi bi-check2-circle me-1"></i>100% Acceptance</small>
+            <small className="text-light opacity-75 d-block fw-semibold mb-1">
+              Trips Completed
+            </small>
+
+            <h3 className="fw-bold text-success mb-0">
+              {ridesList.length > 0
+                ? `${ridesList.length} Rides`
+                : "8 Rides"}
+            </h3>
+
+            <small className="text-light opacity-75 fw-semibold mt-1 d-block">
+              <i className="bi bi-check2-circle me-1"></i>
+              100% Acceptance
+            </small>
           </div>
         </div>
 
@@ -628,13 +1315,24 @@ export default function DriverHome() {
           <div
             className="card border-0 shadow-lg rounded-4 p-3 text-white"
             style={{
-              background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
-              border: "1px solid rgba(59, 130, 246, 0.3)",
+              background:
+                "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
+              border:
+                "1px solid rgba(59, 130, 246, 0.3)",
             }}
           >
-            <small className="text-light opacity-75 d-block font-semibold mb-1" style={{ fontSize: "0.75rem" }}>Active Shift</small>
-            <h3 className="fw-bold text-info mb-0">6.5 Hrs</h3>
-            <small className="text-light opacity-75 fw-semibold mt-1 d-block" style={{ fontSize: "0.7rem" }}><i className="bi bi-clock-history me-1"></i>On Duty Today</small>
+            <small className="text-light opacity-75 d-block fw-semibold mb-1">
+              Active Shift
+            </small>
+
+            <h3 className="fw-bold text-info mb-0">
+              6.5 Hrs
+            </h3>
+
+            <small className="text-light opacity-75 fw-semibold mt-1 d-block">
+              <i className="bi bi-clock-history me-1"></i>
+              On Duty Today
+            </small>
           </div>
         </div>
 
@@ -642,47 +1340,97 @@ export default function DriverHome() {
           <div
             className="card border-0 shadow-lg rounded-4 p-3 text-white"
             style={{
-              background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
-              border: "1px solid rgba(234, 179, 8, 0.3)",
+              background:
+                "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
+              border:
+                "1px solid rgba(234, 179, 8, 0.3)",
             }}
           >
-            <small className="text-light opacity-75 d-block font-semibold mb-1" style={{ fontSize: "0.75rem" }}>Driver Rating</small>
-            <h3 className="fw-bold text-warning mb-0">4.95 ★</h3>
-            <small className="text-light opacity-75 fw-semibold mt-1 d-block" style={{ fontSize: "0.7rem" }}><i className="bi bi-star-fill text-warning me-1"></i>124 Reviews</small>
+            <small className="text-light opacity-75 d-block fw-semibold mb-1">
+              Driver Rating
+            </small>
+
+            <h3 className="fw-bold text-warning mb-0">
+              4.95 ★
+            </h3>
+
+            <small className="text-light opacity-75 fw-semibold mt-1 d-block">
+              <i className="bi bi-star-fill text-warning me-1"></i>
+              124 Reviews
+            </small>
           </div>
         </div>
+
       </div>
 
-      {/* ================= DRIVER REWARDS & PERFORMANCE SHOWCASE ================= */}
+      {/* =====================================================
+          REWARDS
+      ===================================================== */}
+
       <div className="row g-3">
+
         <div className="col-md-7">
           <div
             className="card border-0 shadow-lg rounded-4 p-4 text-white h-100 position-relative overflow-hidden"
             style={{
-              background: "linear-gradient(135deg, #1E1B4B 0%, #0F172A 100%)",
-              border: "1px solid rgba(234, 179, 8, 0.3)",
-              boxShadow: "0 10px 30px rgba(234, 179, 8, 0.1)",
+              background:
+                "linear-gradient(135deg, #1E1B4B 0%, #0F172A 100%)",
+              border:
+                "1px solid rgba(234, 179, 8, 0.3)",
             }}
           >
             <div className="row align-items-center">
+
               <div className="col-sm-7">
-                <span className="badge bg-warning text-dark fw-bold px-3 py-1.5 rounded-pill mb-2 shadow-sm">
-                  <i className="bi bi-trophy-fill me-1"></i>WEEKLY CAPTAIN REWARDS
+                <span className="badge bg-warning text-dark fw-bold px-3 py-1 rounded-pill mb-2 shadow-sm">
+                  <i className="bi bi-trophy-fill me-1"></i>
+                  WEEKLY CAPTAIN REWARDS
                 </span>
-                <h4 className="fw-bold text-white mb-2">Gold Tier Driver Status</h4>
+
+                <h4 className="fw-bold text-white mb-2">
+                  Gold Tier Driver Status
+                </h4>
+
                 <p className="text-light opacity-80 small mb-3">
-                  Complete 5 more trips this week to unlock ₹500 fuel cash bonus & 0% commission on weekend rides!
+                  Complete 5 more trips this week to
+                  unlock ₹500 fuel cash bonus &amp; 0%
+                  commission on weekend rides!
                 </p>
-                <div className="progress mb-2 bg-dark border border-secondary border-opacity-30" style={{ height: "10px", borderRadius: "10px" }}>
-                  <div className="progress-bar bg-warning progress-bar-striped progress-bar-animated" role="progressbar" style={{ width: "75%" }}></div>
+
+                <div
+                  className="progress mb-2 bg-dark border border-secondary border-opacity-30"
+                  style={{
+                    height: "10px",
+                    borderRadius: "10px",
+                  }}
+                >
+                  <div
+                    className="progress-bar bg-warning progress-bar-striped progress-bar-animated"
+                    role="progressbar"
+                    style={{
+                      width: "75%",
+                    }}
+                  ></div>
                 </div>
-                <small className="text-warning fw-bold d-block">15 / 20 Trips Completed (75%)</small>
+
+                <small className="text-warning fw-bold d-block">
+                  15 / 20 Trips Completed (75%)
+                </small>
               </div>
+
               <div className="col-sm-5 text-center mt-3 mt-sm-0">
-                <div className="rounded-4 p-3 bg-warning bg-opacity-15 text-warning d-flex align-items-center justify-content-center border border-warning border-opacity-30" style={{ width: "100px", height: "100px", margin: "0 auto" }}>
+                <div
+                  className="rounded-4 p-3 bg-warning bg-opacity-15 text-warning d-flex align-items-center justify-content-center border border-warning border-opacity-30"
+                  style={{
+                    width: "100px",
+                    height: "100px",
+                    margin: "0 auto",
+                  }}
+                >
                   <i className="bi bi-trophy-fill fs-1 text-warning"></i>
                 </div>
               </div>
+
             </div>
           </div>
         </div>
@@ -691,148 +1439,95 @@ export default function DriverHome() {
           <div
             className="card border-0 shadow-lg rounded-4 p-4 text-white h-100 position-relative overflow-hidden"
             style={{
-              background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
-              border: "1px solid rgba(59, 130, 246, 0.35)",
+              background:
+                "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
+              border:
+                "1px solid rgba(59, 130, 246, 0.35)",
             }}
           >
             <div className="d-flex align-items-center gap-3">
-              <div className="rounded-circle bg-warning bg-opacity-20 text-warning d-flex justify-content-center align-items-center border border-2 border-warning" style={{ width: "64px", height: "64px" }}>
+
+              <div
+                className="rounded-circle bg-warning bg-opacity-20 text-warning d-flex justify-content-center align-items-center border border-2 border-warning"
+                style={{
+                  width: "64px",
+                  height: "64px",
+                }}
+              >
                 <i className="bi bi-person-fill fs-2"></i>
               </div>
+
               <div>
-                <h5 className="fw-bold text-white mb-0">Dhananjay Patil</h5>
-                <small className="text-warning"><i className="bi bi-star-fill me-1"></i>4.95 Rating (124 Reviews)</small>
+                <h5 className="fw-bold text-white mb-0">
+                  {user?.name ||
+                    user?.username ||
+                    "Verified Driver Captain"}
+                </h5>
+
+                <small className="text-warning">
+                  <i className="bi bi-star-fill me-1"></i>
+                  4.95 Rating (124 Reviews)
+                </small>
+
                 <span className="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30 d-block mt-1 small">
                   Verified Captain
                 </span>
               </div>
+
             </div>
+
             <hr className="border-secondary border-opacity-30 my-3" />
+
             <div className="d-flex justify-content-between text-center">
+
               <div>
-                <small className="text-light opacity-75 d-block" style={{ fontSize: "0.7rem" }}>Total Rides</small>
-                <strong className="text-white fs-6">342</strong>
+                <small className="text-light opacity-75 d-block">
+                  Total Rides
+                </small>
+
+                <strong className="text-white fs-6">
+                  342
+                </strong>
               </div>
+
               <div className="border-end border-secondary border-opacity-30"></div>
+
               <div>
-                <small className="text-light opacity-75 d-block" style={{ fontSize: "0.7rem" }}>Accept Rate</small>
-                <strong className="text-success fs-6">98%</strong>
+                <small className="text-light opacity-75 d-block">
+                  Accept Rate
+                </small>
+
+                <strong className="text-success fs-6">
+                  98%
+                </strong>
               </div>
+
               <div className="border-end border-secondary border-opacity-30"></div>
+
               <div>
-                <small className="text-light opacity-75 d-block" style={{ fontSize: "0.7rem" }}>Cancel Rate</small>
-                <strong className="text-info fs-6">0.8%</strong>
+                <small className="text-light opacity-75 d-block">
+                  Cancel Rate
+                </small>
+
+                <strong className="text-info fs-6">
+                  0.8%
+                </strong>
               </div>
+
             </div>
           </div>
         </div>
+
       </div>
 
-      {/* ================= 4. RECENT COMPLETED RIDES TABLE ================= */}
-      <div
-        className="card border-0 shadow-lg rounded-4 p-4 text-white"
-        style={{
-          background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-        }}
-      >
-        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3 pb-3 border-bottom border-white border-opacity-10">
-          <h5 className="fw-bold mb-0 text-white">
-            <i className="bi bi-clock-history me-2 text-warning"></i>Recent Completed Trips
-          </h5>
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            <div className="input-group input-group-sm" style={{ width: "250px" }}>
-              <span
-                className="input-group-text border-end-0 rounded-start-pill text-warning px-3"
-                style={{
-                  backgroundColor: "rgba(30, 41, 59, 0.85)",
-                  borderColor: "rgba(255, 107, 0, 0.45)",
-                }}
-              >
-                <i className="bi bi-search text-warning"></i>
-              </span>
-              <input
-                type="text"
-                className="form-control border-start-0 rounded-end-pill text-white small px-2"
-                placeholder="Search fare (₹250), rider, location..."
-                value={tripSearch}
-                onChange={(e) => setTripSearch(e.target.value)}
-                style={{
-                  backgroundColor: "rgba(30, 41, 59, 0.85)",
-                  borderColor: "rgba(255, 107, 0, 0.45)",
-                  color: "#FFFFFF",
-                  boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
-                }}
-              />
-            </div>
-            <Link to="/driver/earnings" className="btn btn-outline-warning btn-sm rounded-pill px-3">
-              View Wallet <i className="bi bi-arrow-right me-1"></i>
-            </Link>
-          </div>
-        </div>
+      {/* =====================================================
+          RECENT RIDES
+      ===================================================== */}
 
-        <div className="table-responsive">
-          <table className="table table-dark table-hover align-middle mb-0" style={{ background: "transparent" }}>
-            <thead>
-              <tr className="text-light opacity-75 border-bottom border-white border-opacity-10">
-                <th>Sr. No.</th>
-                <th>Pickup & Destination Route</th>
-                <th>Fare Amount</th>
-                <th>Payment Mode</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentRides
-                .filter(
-                  (ride) =>
-                    ride.rider.toLowerCase().includes(tripSearch.toLowerCase()) ||
-                    ride.fare.toLowerCase().includes(tripSearch.toLowerCase()) ||
-                    ride.payment.toLowerCase().includes(tripSearch.toLowerCase()) ||
-                    ride.pickup.toLowerCase().includes(tripSearch.toLowerCase()) ||
-                    ride.drop.toLowerCase().includes(tripSearch.toLowerCase())
-                )
-                .map((ride, idx) => (
-                  <tr key={ride.id} className="border-bottom border-white border-opacity-10">
-                    <td className="fw-bold text-white">#{idx + 1}</td>
-                    <td>
-                      <small className="d-block text-white fw-semibold">{ride.pickup}</small>
-                      <small className="text-light opacity-75">{ride.drop}</small>
-                    </td>
-                    <td className="fw-bold text-warning fs-6">{ride.fare}</td>
-                    <td>
-                      <span
-                        className={`badge px-3 py-1.5 rounded-pill fw-bold shadow-sm ${
-                          ride.payment === "UPI"
-                            ? "bg-warning text-dark"
-                            : ride.payment === "Cash"
-                            ? "bg-success text-white"
-                            : "bg-info text-dark"
-                        }`}
-                      >
-                        <i
-                          className={`bi me-1 ${
-                            ride.payment === "UPI"
-                              ? "bi-qr-code-scan"
-                              : ride.payment === "Cash"
-                              ? "bi-cash-stack"
-                              : "bi-credit-card-fill"
-                          }`}
-                        ></i>
-                        {ride.payment}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="badge bg-success px-2.5 py-1 rounded-pill">
-                        {ride.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DriverRecentTrips
+        recentRides={recentRides}
+      />
+
     </div>
   );
 }

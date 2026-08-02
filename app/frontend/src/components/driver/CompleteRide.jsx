@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { authApi, rideApi } from "../services/api";
+import { authApi, rideApi, paymentApi } from "../services/api";
 
 export default function CompleteRide() {
   const navigate = useNavigate();
@@ -9,17 +9,7 @@ export default function CompleteRide() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
-  const [rideData, setRideData] = useState({
-    id: "RIDE-1093",
-    riderName: "Rahul Sharma",
-    pickup: "Sangli Railway Station",
-    destination: "Vishrambag Main Road, Sangli",
-    distance: "4.5 km",
-    totalFare: 160.0,
-    paymentMode: "UPI",
-    driverShare: 128.0,
-    platformFee: 32.0,
-  });
+  const [rideData, setRideData] = useState(null);
 
   useEffect(() => {
     async function loadCurrentRide() {
@@ -30,18 +20,22 @@ export default function CompleteRide() {
           const fare = parseFloat(latest.fare || 160.0);
           setRideData({
             id: `RIDE-${latest.rideId || latest.id || 1093}`,
-            riderName: latest.riderName || latest.rider || `Rider #${latest.userId || 4}`,
+            riderName: latest.riderName || latest.rider || `Rider #${latest.userId}`,
             pickup: latest.source || "Sangli Railway Station",
             destination: latest.destination || "Vishrambag Main Road, Sangli",
             distance: "4.5 km",
             totalFare: fare,
             paymentMode: latest.paymentMode || "UPI",
-            driverShare: fare * 0.8,
-            platformFee: fare * 0.2,
+            driverShare: fare * 0.95,
+            platformFee: fare * 0.05,
+            userId: latest.userId || 4,
           });
+        } else {
+          setRideData(null);
         }
       } catch (err) {
         console.warn("Backend ride sync:", err);
+        setRideData(null);
       }
     }
     loadCurrentRide();
@@ -51,8 +45,20 @@ export default function CompleteRide() {
     e.preventDefault();
     setIsSubmitting(true);
 
+    const rideIdNum = parseInt(rideData.id.replace("RIDE-", "")) || 1;
     try {
-      const rideIdNum = parseInt(rideData.id.replace("RIDE-", "")) || 1;
+      await paymentApi.processPayment({
+        rideId: rideIdNum,
+        userId: rideData.userId || 4,
+        totalFare: rideData.totalFare,
+        discountAmount: 0,
+        paymentMode: rideData.paymentMode || "UPI",
+      });
+    } catch (err) {
+      console.warn("Payment recording notice:", err);
+    }
+
+    try {
       await rideApi.completeTrip(rideIdNum);
     } catch (err) {
       console.warn("Backend sync notice:", err);
@@ -87,6 +93,19 @@ export default function CompleteRide() {
           <h4 className="fw-bold mt-2 mb-1">{successMsg}</h4>
           <p className="text-secondary small mb-0">Redirecting to Driver Dashboard...</p>
         </div>
+      ) : !rideData ? (
+        <div className="card border-0 shadow-sm p-5 text-center rounded-4">
+          <i className="bi bi-info-circle text-primary mb-2" style={{ fontSize: "3rem" }}></i>
+          <h5 className="fw-bold text-dark">No Active Ride to Complete</h5>
+          <p className="text-secondary small mb-3">
+            You do not currently have any active ride in progress. Accept a ride request to start navigation.
+          </p>
+          <div>
+            <button className="btn btn-primary fw-semibold px-4 py-2 rounded-pill" onClick={() => navigate("/driver")}>
+              Go to Driver Dashboard
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="row justify-content-center">
           <div className="col-lg-8">
@@ -116,11 +135,11 @@ export default function CompleteRide() {
                 </div>
                 <hr className="my-2" />
                 <div className="d-flex justify-content-between mb-1">
-                  <span className="text-secondary">Driver Earnings (80%):</span>
+                  <span className="text-secondary">Driver Share (95%):</span>
                   <strong className="text-success">₹{rideData.driverShare.toFixed(2)}</strong>
                 </div>
                 <div className="d-flex justify-content-between">
-                  <span className="text-secondary">Platform Service Fee (20%):</span>
+                  <span className="text-secondary">Admin Commission Fee (5%):</span>
                   <span className="text-secondary">₹{rideData.platformFee.toFixed(2)}</span>
                 </div>
               </div>
