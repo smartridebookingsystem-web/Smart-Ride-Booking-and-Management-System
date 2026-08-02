@@ -397,12 +397,13 @@ export default function MyBookings() {
         <div className="d-flex flex-column gap-3 mb-4">
           {paginatedBookings.map((b, index) => {
             const normStatus = getNormalizedStatus(b.status);
-            const rideIdStr = `SR${12340 + (b.rideId || b.id || index + 1)}`;
-            const storedOtp = getRideOtp(b.rideId || b.id);
-            const vehicleName = b.vehicleType || (index % 3 === 0 ? "SUV" : index % 3 === 1 ? "Sedan" : "Hatchback");
-            const driverName = b.driverName || (index % 3 === 0 ? "Ramesh Yadav" : index % 3 === 1 ? "Suresh Patil" : "Mahesh Singh");
+            const actualRideId = b.ride_id || b.rideId || b.id || (index + 1);
+            const rideIdStr = `SR${1000 + Number(actualRideId)}`;
+            const storedOtp = getRideOtp(actualRideId);
+            const vehicleName = b.vehicleType || b.vehicle_type || (index % 3 === 0 ? "SUV" : index % 3 === 1 ? "Sedan" : "Hatchback");
+            const driverName = b.driverName || b.driver_name || (index % 3 === 0 ? "Ramesh Yadav" : index % 3 === 1 ? "Suresh Patil" : "Mahesh Singh");
             const driverRating = b.driverRating || (4.5 + (index % 5) * 0.1).toFixed(1);
-            const fareVal = b.fare !== undefined && b.fare !== null ? b.fare : 180 + index * 70;
+            const fareVal = b.fare || b.total_fare || b.totalFare || b.net_amount || (180 + index * 70);
 
             return (
               <div key={b.rideId || b.id || index} className="card border-0 shadow-sm rounded-4 p-3.5 bg-white position-relative hover-shadow transition-all">
