@@ -1,0 +1,7 @@
+# .NET Build artifacts
+bin/
+obj/
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
