@@ -12,7 +12,10 @@ export default function DriverManagement({ drivers, setDrivers, setSelectedRow, 
     { header: "Verification Status", field: "statusDisplay" },
   ];
 
-  const activeDrivers = drivers.filter((d) => String(d.status || "").toLowerCase() !== "deactivated");
+  const activeDrivers = drivers.filter((d) => {
+    const s = String(d.status || "").toLowerCase();
+    return s !== "deactivated" && s !== "inactive" && s !== "disabled" && s !== "suspended";
+  });
 
   const tableData = activeDrivers.map((d) => ({
     ...d,
@@ -20,7 +23,11 @@ export default function DriverManagement({ drivers, setDrivers, setSelectedRow, 
       <button
         className="btn btn-sm px-3 fw-semibold text-white"
         style={{ background: "#FF6B00", borderColor: "#FF6B00" }}
-        onClick={() => setPreviewDoc({ title: `${d.name}'s License Document`, url: d.licensePdfUrl, isPdf: d.licensePdfUrl.endsWith(".pdf") })}
+        onClick={() => {
+          const urlStr = String(d.licensePdfUrl || "");
+          const isPdf = urlStr.startsWith("data:application/pdf") || urlStr.toLowerCase().includes(".pdf");
+          setPreviewDoc({ title: `${d.name}'s License Document`, url: d.licensePdfUrl, isPdf });
+        }}
       >
         <i className="bi bi-file-earmark-pdf-fill me-1"></i> View License
       </button>
@@ -28,8 +35,8 @@ export default function DriverManagement({ drivers, setDrivers, setSelectedRow, 
       <span className="badge bg-secondary">No File Uploaded</span>
     ),
     statusDisplay: (
-      <span className={`badge ${d.status === "Verified" || d.status === "active" ? "bg-success" : d.status === "Deactivated" || d.status === "Rejected" ? "bg-danger" : "bg-warning text-dark"} px-2 py-1`}>
-        {d.status === "active" ? "Verified" : d.status}
+      <span className={`badge ${String(d.status).toLowerCase() === "verified" ? "bg-success" : String(d.status).toLowerCase() === "deactivated" || String(d.status).toLowerCase() === "rejected" ? "bg-danger" : "bg-warning text-dark"} px-2.5 py-1.5 fw-semibold`}>
+        {String(d.status).toLowerCase() === "verified" ? "Verified" : String(d.status).toLowerCase() === "deactivated" ? "Deactivated" : d.status || "Pending Verification"}
       </span>
     ),
   }));

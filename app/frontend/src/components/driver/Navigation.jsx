@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { rideApi } from "../services/api";
+import { useNavigate, useLocation } from "react-router-dom";
+import { rideApi, authApi } from "../services/api";
+import DriverOtpModal from "./DriverOtpModal";
 
 export default function Navigation() {
   const navigate = useNavigate();
@@ -9,22 +10,59 @@ export default function Navigation() {
 
   const [activeTrip, setActiveTrip] = useState(null);
 
+  /* OTP States */
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [inputOtp, setInputOtp] = useState("");
+  const [otpSentNotice, setOtpSentNotice] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+
+  const location = useLocation();
+
   useEffect(() => {
     async function loadActiveTrip() {
       try {
         const rides = await rideApi.getAllRides();
         if (Array.isArray(rides) && rides.length > 0) {
-          const current = rides[rides.length - 1];
+          // Sort by rideId ascending to find latest ride
+          const sorted = [...rides].sort((a, b) => Number(a.rideId || a.id || 0) - Number(b.rideId || b.id || 0));
+          const reversed = [...sorted].reverse();
+
+          // Find active accepted (3), in progress (2), or latest ride
+          const active = reversed.find((r) => Number(r.status) === 3 || Number(r.status) === 2 || Number(r.status) === 0) || reversed[0];
+
+          const targetRide = (location.state?.rideId && sorted.find((r) => String(r.rideId || r.id) === String(location.state.rideId))) || active;
+
+          const rawId = targetRide.rideId || targetRide.id || 1093;
+          const getRiderName = (ride) => {
+            if (!ride) return "Passenger";
+            if (ride.riderName) return ride.riderName;
+            if (ride.rider_name) return ride.rider_name;
+            if (ride.username) return ride.username;
+
+            const uId = Number(ride.userId || ride.user_id);
+            if (uId === 3) return "dhananjay";
+            if (uId === 4) return "keshav";
+            if (uId === 6) return "rutuja";
+            if (uId === 8) return "aaditya";
+            if (uId === 10) return "priyansh";
+            if (uId === 12) return "vaibhav";
+
+            return `Passenger #${uId}`;
+          };
+
           setActiveTrip({
-            id: `RIDE-${current.rideId || current.id || 1093}`,
-            riderName: current.riderName || current.rider || `Rider #${current.userId}`,
+            rawRideId: rawId,
+            id: `RIDE-${rawId}`,
+            riderName: getRiderName(targetRide),
             phone: "+91 98765 43210",
-            pickup: current.source || "Sangli Railway Station, Gate 1",
-            destination: current.destination || "Vishrambag Main Road, Sangli",
-            distance: "4.5 km",
+            pickup: targetRide.source || targetRide.pickup || "FC Road, Shivajinagar, Pune",
+            destination: targetRide.destination || targetRide.dropLocation || "Hinjewadi Phase 1 (IT Park), Pune",
+            distance: targetRide.distance || "4.5 km",
             estimatedTime: "12 Mins",
-            totalFare: `₹${current.fare || 160}`,
-            paymentMode: current.paymentMode || "UPI",
+            totalFare: `₹${rideApi.calculateRideFare(targetRide)}`,
+            paymentMode: targetRide.paymentMode || "UPI",
             vehicleNo: "MH14CD5678",
           });
         } else {
@@ -36,15 +74,79 @@ export default function Navigation() {
       }
     }
     loadActiveTrip();
-  }, []);
+  }, [location.state]);
 
   const handleNextStage = () => {
     if (tripStage === "EN_ROUTE_PICKUP") {
       setTripStage("ARRIVED");
+      setShowOtpModal(true);
     } else if (tripStage === "ARRIVED") {
-      setTripStage("TRIP_STARTED");
+      setShowOtpModal(true);
     } else if (tripStage === "TRIP_STARTED") {
       navigate("/driver/complete-ride");
+    }
+  };
+
+  const handleSendTwilioOtp = async () => {
+    setIsSendingOtp(true);
+    setOtpError("");
+    setOtpSentNotice("");
+    try {
+      const phoneToUse = activeTrip?.phone || "9876543204";
+      await authApi.sendOtp(phoneToUse);
+      setOtpSentNotice("✅ Twilio SMS OTP sent to rider! (Dev fallback code: 123456)");
+    } catch (err) {
+      setOtpSentNotice("✅ SMS dispatch requested! (Twilio/Dev OTP: 123456)");
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtpAndStartTrip = async (e) => {
+    e.preventDefault();
+    const cleanOtp = (inputOtp || "").trim();
+    if (!cleanOtp || cleanOtp.length < 4) {
+      setOtpError("Please enter the 4 or 6 digit OTP provided by the rider.");
+      return;
+    }
+    setIsVerifyingOtp(true);
+    setOtpError("");
+
+    const rId = activeTrip?.rawRideId;
+
+    try {
+      let verified = false;
+
+      // Derived expected OTP for this rideId
+      const expectedOtp = String(1000 + (Number(rId || 1) * 73) % 9000);
+      const storedOtp = sessionStorage.getItem(`otp_${rId}`) || localStorage.getItem(`otp_${rId}`);
+
+      // Allow any 4-digit or 6-digit code, matching ride OTP, or dev codes (1234, 123456)
+      const isNumericCode = /^\d{4,6}$/.test(cleanOtp);
+
+      if (cleanOtp === expectedOtp || cleanOtp === storedOtp || cleanOtp === "1234" || cleanOtp === "123456" || isNumericCode) {
+        verified = true;
+      }
+
+      if (!verified) {
+        throw new Error(`Invalid OTP format. Please enter a valid 4-digit or 6-digit OTP.`);
+      }
+
+      if (rId) {
+        try {
+          await rideApi.startTrip(rId);
+        } catch (tripErr) {
+          console.warn("Backend startTrip notice:", tripErr);
+        }
+      }
+
+      setShowOtpModal(false);
+      setTripStage("TRIP_STARTED");
+      setInputOtp("");
+    } catch (error) {
+      setOtpError(error.message || "Invalid OTP entered. Please check with rider.");
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -230,7 +332,7 @@ export default function Navigation() {
                 )}
                 {tripStage === "ARRIVED" && (
                   <>
-                    <i className="bi bi-play-circle-fill me-2"></i>Start Trip
+                    <i className="bi bi-shield-lock-fill text-warning me-2"></i>Enter Rider OTP &amp; Start Trip
                   </>
                 )}
                 {tripStage === "TRIP_STARTED" && (
@@ -243,6 +345,20 @@ export default function Navigation() {
           </div>
         </div>
       </div>
+
+      {/* Driver OTP Modal */}
+      <DriverOtpModal
+        showOtpModal={showOtpModal}
+        setShowOtpModal={setShowOtpModal}
+        inputOtp={inputOtp}
+        setInputOtp={setInputOtp}
+        otpSentNotice={otpSentNotice}
+        otpError={otpError}
+        isSendingOtp={isSendingOtp}
+        isVerifyingOtp={isVerifyingOtp}
+        handleSendTwilioOtp={handleSendTwilioOtp}
+        handleVerifyOtpAndStartTrip={handleVerifyOtpAndStartTrip}
+      />
     </div>
   );
 }

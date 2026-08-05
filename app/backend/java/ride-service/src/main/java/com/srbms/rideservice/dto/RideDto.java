@@ -10,6 +10,7 @@ public class RideDto {
     private String destination;
     private Integer status;
     private Integer driverId;
+    private String createdAt;
 
     public RideDto() {
     }
@@ -21,7 +22,8 @@ public class RideDto {
             String source,
             String destination,
             Integer status,
-            Integer driverId) {
+            Integer driverId,
+            String createdAt) {
 
         this.rideId = rideId;
         this.userId = userId;
@@ -30,6 +32,7 @@ public class RideDto {
         this.destination = destination;
         this.status = status;
         this.driverId = driverId;
+        this.createdAt = createdAt;
     }
 
     public Integer getRideId() {
@@ -86,6 +89,14 @@ public class RideDto {
 
     public void setDriverId(Integer driverId) {
         this.driverId = driverId;
+    }
+
+    public String getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
     }
 }
 

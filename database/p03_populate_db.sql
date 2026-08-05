@@ -213,9 +213,16 @@ INSERT INTO `complaint` (`complaint_id`, `user_id`, `ride_id`, `subject`, `descr
 (7, 12, 7, 'Driver Cancelled After 10 Mins', 'Driver cancelled booking after making me wait at pickup point.', 'Cancellation Dispute', 'Resolved', 'Issued ₹50 wallet compensation credit.', '2026-07-29 15:45:00'),
 (8, 4, 8, 'Cleanliness Issue', 'Vehicle seat covers were dusty.', 'Vehicle Quality', 'Resolved', 'Driver notified to clean vehicle interior daily.', '2026-07-30 08:30:00'),
 (9, 3, 9, 'UPI Payment Status Pending', 'Payment deducted from bank but showing pending in app.', 'Payment Gateway', 'In Progress', 'Verifying transaction ref with bank aggregator.', '2026-07-31 16:00:00'),
-(10, 6, 10, 'Lost Wallet in Taxi', 'Left black leather wallet on back seat during night trip.', 'Lost Item', 'Open', 'Driver contacted to check vehicle back seat.', '2026-08-01 10:00:00')
-ON DUPLICATE KEY UPDATE `subject` = VALUES(`subject`), `status` = VALUES(`status`);
-/*!40000 ALTER TABLE `complaint` ENABLE KEYS */;
+--
+-- Dumping data for table `otp_verification`
+--
+LOCK TABLES `otp_verification` WRITE;
+/*!40000 ALTER TABLE `otp_verification` DISABLE KEYS */;
+INSERT INTO `otp_verification` (`id`, `ride_id`, `phone`, `otp_code`, `status`, `created_at`, `expires_at`) VALUES
+(1, 1, '9876543204', '4892', 'VERIFIED', '2026-07-25 10:15:00', '2026-07-25 10:20:00'),
+(2, 2, '9876543203', '1234', 'VERIFIED', '2026-07-26 14:30:00', '2026-07-26 14:35:00')
+ON DUPLICATE KEY UPDATE `status` = VALUES(`status`), `otp_code` = VALUES(`otp_code`);
+/*!40000 ALTER TABLE `otp_verification` ENABLE KEYS */;
 UNLOCK TABLES;
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

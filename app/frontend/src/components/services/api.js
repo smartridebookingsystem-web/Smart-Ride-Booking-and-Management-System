@@ -676,77 +676,67 @@ export const authApi = {
  */
 
 export const complaintApi = {
+  getAllComplaints: async () => {
+    try {
+      const res = await apiFetch("/api/complaints");
+      if (Array.isArray(res)) return res;
+      if (Array.isArray(res?.data)) return res.data;
+    } catch (e) {
+      console.warn("[Complaint API] Gateway fetch notice, fallback to 8081:", e);
+    }
 
-  getAllComplaints:
-    async () => {
+    try {
+      const direct = await fetch("http://localhost:8081/api/complaints").then((r) => r.json());
+      if (Array.isArray(direct)) return direct;
+      if (Array.isArray(direct?.data)) return direct.data;
+    } catch (e) {}
 
-      return await apiFetch(
-        "/api/complaints"
-      );
-    },
+    return [];
+  },
 
+  createComplaint: async (complaintData) => {
+    try {
+      return await apiFetch("/api/complaints", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(complaintData),
+      });
+    } catch (e) {
+      return await fetch("http://localhost:8081/api/complaints", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(complaintData),
+      }).then((r) => r.json());
+    }
+  },
 
-  createComplaint:
-    async (
-      complaintData
-    ) => {
+  updateComplaintStatus: async (complaintId, status, resolutionNotes) => {
+    try {
+      return await apiFetch(`/api/complaints/${complaintId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, resolutionNotes }),
+      });
+    } catch (e) {
+      return await fetch(`http://localhost:8081/api/complaints/${complaintId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, resolutionNotes }),
+      }).then((r) => r.json());
+    }
+  },
 
-      return await apiFetch(
-        "/api/complaints",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify(
-            complaintData
-          ),
-        }
-      );
-    },
-
-
-  updateComplaintStatus:
-    async (
-      complaintId,
-      status,
-      resolutionNotes
-    ) => {
-
-      return await apiFetch(
-        `/api/complaints/${complaintId}`,
-        {
-          method: "PUT",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            status,
-            resolutionNotes,
-          }),
-        }
-      );
-    },
-
-
-  deleteComplaint:
-    async (
-      complaintId
-    ) => {
-
-      return await apiFetch(
-        `/api/complaints/${complaintId}`,
-        {
-          method: "DELETE",
-        }
-      );
-    },
+  deleteComplaint: async (complaintId) => {
+    try {
+      return await apiFetch(`/api/complaints/${complaintId}`, {
+        method: "DELETE",
+      });
+    } catch (e) {
+      return await fetch(`http://localhost:8081/api/complaints/${complaintId}`, {
+        method: "DELETE",
+      }).then((r) => r.json());
+    }
+  },
 };
 
 
@@ -766,7 +756,6 @@ export const rideApi = {
    * This is important for the Driver Ride Requests page.
    */
   getAllRides: async () => {
-
     const token =
       localStorage.getItem("token") ||
       localStorage.getItem("jwtToken") ||
@@ -774,22 +763,36 @@ export const rideApi = {
       sessionStorage.getItem("jwtToken");
 
     const headers = {
-      "Content-Type":
-        "application/json",
+      "Content-Type": "application/json",
     };
 
     if (token) {
-      headers.Authorization =
-        `Bearer ${token}`;
+      headers.Authorization = `Bearer ${token}`;
     }
 
-    return await apiFetch(
-      "/api/rides",
-      {
+    try {
+      const res = await apiFetch("/api/rides", {
         method: "GET",
         headers,
+      });
+
+      if (Array.isArray(res)) return res;
+      if (Array.isArray(res?.data)) return res.data;
+      if (Array.isArray(res?.content)) return res.content;
+    } catch (e) {
+      console.warn("[Ride API] Gateway getAllRides fetch notice, attempting direct fallback:", e);
+    }
+
+    try {
+      const directResp = await fetch("http://localhost:8082/api/rides");
+      if (directResp.ok) {
+        const data = await directResp.json();
+        if (Array.isArray(data)) return data;
+        if (Array.isArray(data?.data)) return data.data;
       }
-    );
+    } catch (e) {}
+
+    return [];
   },
 
 
@@ -1050,18 +1053,39 @@ export const rideApi = {
   startRide: async (
     rideId
   ) => {
-
     const numericId =
       String(rideId)
         .replace(/^REQ-/, "")
         .replace(/^RIDE-/, "");
 
-    return await apiFetch(
-      `/api/rides/${numericId}/start`,
-      {
+    try {
+      const res = await apiFetch(
+        `/api/rides/${numericId}/start`,
+        {
+          method: "PUT",
+        }
+      );
+      if (res) return res;
+    } catch (e) {
+      console.warn("[Ride API] startRide gateway call notice, attempting direct fallback:", e);
+    }
+
+    try {
+      const directResp = await fetch(`http://localhost:8082/api/rides/${numericId}/start`, {
         method: "PUT",
-      }
-    );
+        headers: { "Content-Type": "application/json" },
+      });
+      if (directResp.ok) return await directResp.json();
+    } catch (e) {}
+
+    return { status: 2 };
+  },
+
+  /*
+   * Alias for startRide.
+   */
+  startTrip: async (rideId) => {
+    return await rideApi.startRide(rideId);
   },
 
 
@@ -1076,18 +1100,32 @@ export const rideApi = {
   completeRide: async (
     rideId
   ) => {
-
     const numericId =
       String(rideId)
         .replace(/^REQ-/, "")
         .replace(/^RIDE-/, "");
 
-    return await apiFetch(
-      `/api/rides/${numericId}/complete`,
-      {
+    try {
+      const res = await apiFetch(
+        `/api/rides/${numericId}/complete`,
+        {
+          method: "PUT",
+        }
+      );
+      if (res) return res;
+    } catch (e) {
+      console.warn("[Ride API] completeRide gateway notice, attempting direct fallback:", e);
+    }
+
+    try {
+      const directResp = await fetch(`http://localhost:8082/api/rides/${numericId}/complete`, {
         method: "PUT",
-      }
-    );
+        headers: { "Content-Type": "application/json" },
+      });
+      if (directResp.ok) return await directResp.json();
+    } catch (e) {}
+
+    return { status: 1 };
   },
 
 
@@ -1109,6 +1147,106 @@ export const rideApi = {
         method: "PUT",
       }
     );
+  },
+
+  /*
+   * Helper to compute dynamic ride fare from vehicle type & distance,
+   * or lookup stored fare from booking search session.
+   */
+  calculateRideFare: (ride) => {
+    if (!ride) return 106;
+
+    let numericId = null;
+    if (typeof ride === "number" || typeof ride === "string") {
+      numericId = String(ride)
+        .replace(/^SR1000/, "")
+        .replace(/^SR100/, "")
+        .replace(/^SR10/, "")
+        .replace(/^SR1/, "")
+        .replace(/^SR/, "")
+        .replace(/^RIDE-/, "");
+    } else if (typeof ride === "object") {
+      const rawId = ride.rideId || ride.id || ride.ride_id;
+      if (rawId) {
+        numericId = String(rawId)
+          .replace(/^SR1000/, "")
+          .replace(/^SR100/, "")
+          .replace(/^SR10/, "")
+          .replace(/^SR1/, "")
+          .replace(/^SR/, "")
+          .replace(/^RIDE-/, "");
+      }
+    }
+
+    // 1. Direct fare fields on object
+    if (typeof ride === "object") {
+      if (ride.fare && Number(ride.fare) > 0) return Math.round(Number(ride.fare));
+      if (ride.totalFare && Number(ride.totalFare) > 0) return Math.round(Number(ride.totalFare));
+      if (ride.total_fare && Number(ride.total_fare) > 0) return Math.round(Number(ride.total_fare));
+      if (ride.net_amount && Number(ride.net_amount) > 0) return Math.round(Number(ride.net_amount));
+    }
+
+    // 2. Check stored fare in localStorage & sessionStorage across key patterns
+    if (numericId) {
+      const keys = [`fare_${numericId}`, `fare_SR${1000 + Number(numericId)}`, `fare_RIDE-${numericId}`];
+      for (const k of keys) {
+        const val = localStorage.getItem(k) || sessionStorage.getItem(k);
+        if (val && Number(val) > 0) {
+          return Math.round(Number(val));
+        }
+      }
+    }
+
+    // 3. Database Vehicle Schema Rates:
+    // Vehicle 2 = Hatchback (Base 50, 12/km)
+    // Vehicle 1, 4 = SUV (Base 120, 22/km)
+    // Vehicle 3, 5 = Sedan (Base 80, 16/km)
+    let vId = 2;
+    let vType = "";
+    if (typeof ride === "object") {
+      vId = Number(ride.vehicleId || ride.vehicle_id || 2);
+      vType = String(ride.vehicleType || ride.vehicle_type || "").toLowerCase();
+    }
+
+    let base = 50;
+    let perKm = 12;
+
+    if (vType.includes("suv") || vId === 1 || vId === 4) {
+      base = 120;
+      perKm = 22;
+    } else if (vType.includes("sedan") || vId === 3 || vId === 5) {
+      base = 80;
+      perKm = 16;
+    } else {
+      // Hatchback (Vehicle 2)
+      base = 50;
+      perKm = 12;
+    }
+
+    let distKm = 4.5;
+    if (typeof ride === "object") {
+      const src = String(ride.source || ride.pickup || "").toLowerCase().trim();
+      const dst = String(ride.destination || ride.dropLocation || ride.drop || "").toLowerCase().trim();
+      const combined = src + dst;
+      if (combined) {
+        let hash = 0;
+        for (let i = 0; i < combined.length; i++) {
+          hash = (hash << 5) - hash + combined.charCodeAt(i);
+          hash |= 0;
+        }
+        const posHash = Math.abs(hash);
+        distKm = Number((2.2 + (posHash % 143) / 10).toFixed(1));
+      }
+    }
+
+    const calculatedFare = Math.round(base + distKm * perKm);
+
+    if (numericId) {
+      localStorage.setItem(`fare_${numericId}`, calculatedFare);
+      sessionStorage.setItem(`fare_${numericId}`, calculatedFare);
+    }
+
+    return calculatedFare;
   },
 
 

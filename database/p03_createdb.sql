@@ -40,7 +40,7 @@ CREATE TABLE `users` (
   `password` varchar(255) NOT NULL,
   `phone` varchar(15) DEFAULT NULL,
   `dob` date NOT NULL,
-  `profile_image` varchar(255) NOT NULL,
+  `profile_image` longtext DEFAULT NULL,
   `gender` enum('male','female','other') NOT NULL,
   `status` enum('active','deactive') DEFAULT 'active',
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
@@ -296,6 +296,24 @@ CREATE TABLE `complaint` (
   KEY `fk_complaint_ride` (`ride_id`),
   CONSTRAINT `fk_complaint_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
   CONSTRAINT `fk_complaint_ride` FOREIGN KEY (`ride_id`) REFERENCES `ride` (`ride_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- ============================================================================
+-- 15. Table structure for table `otp_verification`
+-- ============================================================================
+DROP TABLE IF EXISTS `otp_verification`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `otp_verification` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `ride_id` int DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `otp_code` varchar(10) NOT NULL,
+  `status` enum('PENDING','VERIFIED','EXPIRED') DEFAULT 'PENDING',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_otp_ride` (`ride_id`),
+  CONSTRAINT `fk_otp_ride` FOREIGN KEY (`ride_id`) REFERENCES `ride` (`ride_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

@@ -26,6 +26,9 @@ public class Ride {
     @Column(name = "status")
     private Integer status; // 1 = completed, 2 = inprogress, 0 = requested, 3 = accepted
 
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private java.time.LocalDateTime createdAt;
+
     public Ride() {}
 
     public Ride(Integer userId, Integer vehicleId, String source, String destination, Integer status) {
@@ -82,5 +85,13 @@ public class Ride {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public java.time.LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(java.time.LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

@@ -8,7 +8,7 @@ export default function Availability() {
 
   const [schedule, setSchedule] = useState({
     shiftType: "Full-Time",
-    operatingZone: "Sangli-Miraj-Kupwad City",
+    operatingZone: localStorage.getItem("driver_district") || "Pune",
     preferredRadius: "15 km",
     activeDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
     startTime: "08:00",

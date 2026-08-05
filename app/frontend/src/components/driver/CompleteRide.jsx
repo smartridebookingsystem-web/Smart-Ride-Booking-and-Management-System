@@ -17,10 +17,27 @@ export default function CompleteRide() {
         const rides = await rideApi.getAllRides();
         if (Array.isArray(rides) && rides.length > 0) {
           const latest = rides[rides.length - 1];
-          const fare = parseFloat(latest.fare || 160.0);
+          const fare = parseFloat(rideApi.calculateRideFare(latest));
+          const getRiderName = (ride) => {
+            if (!ride) return "Passenger";
+            if (ride.riderName) return ride.riderName;
+            if (ride.rider_name) return ride.rider_name;
+            if (ride.username) return ride.username;
+
+            const uId = Number(ride.userId || ride.user_id);
+            if (uId === 3) return "dhananjay";
+            if (uId === 4) return "keshav";
+            if (uId === 6) return "rutuja";
+            if (uId === 8) return "aaditya";
+            if (uId === 10) return "priyansh";
+            if (uId === 12) return "vaibhav";
+
+            return `Passenger #${uId}`;
+          };
+
           setRideData({
             id: `RIDE-${latest.rideId || latest.id || 1093}`,
-            riderName: latest.riderName || latest.rider || `Rider #${latest.userId}`,
+            riderName: getRiderName(latest),
             pickup: latest.source || "Sangli Railway Station",
             destination: latest.destination || "Vishrambag Main Road, Sangli",
             distance: "4.5 km",

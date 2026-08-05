@@ -50,6 +50,8 @@ export default function Admindashboard() {
           .filter((u) => String(u.role).toLowerCase() === "driver" || u.roleId === 2 || String(u.roleName).toLowerCase() === "driver")
           .map((d, index) => ({
             id: d.userId || index + 1,
+            userId: d.userId,
+            driverId: index + 1,
             userid: `DRV${String(d.userId || index + 1).padStart(3, "0")}`,
             name: d.username || d.name,
             email: d.email || "N/A",
@@ -62,7 +64,7 @@ export default function Admindashboard() {
       }
 
       const allRides = await rideApi.getAllRides().catch(() => []);
-      setRides(allRides);
+      setRides(Array.isArray(allRides) ? allRides : allRides?.data || []);
 
       const allPayments = await paymentApi.getAllPayments().catch(() => []);
       setPayments(allPayments);
@@ -243,7 +245,10 @@ export default function Admindashboard() {
   };
 
   // Helper Metrics Calculations
-  const deactivatedUsers = users.filter((u) => String(u.status || "").toLowerCase() === "deactivated");
+  const deactivatedUsers = users.filter((u) => {
+    const s = String(u.status || "").toLowerCase();
+    return s === "deactivated" || s === "inactive" || s === "disabled" || s === "suspended";
+  });
   const totalUsersCount = users.length;
   const totalDriversCount = drivers.length;
   const totalRidesCount = rides.length;
@@ -293,6 +298,9 @@ export default function Admindashboard() {
                   totalDriversCount={totalDriversCount}
                   openComplaintsCount={openComplaintsCount}
                   rides={rides}
+                  users={users}
+                  drivers={drivers}
+                  payments={payments}
                 />
               )}
 
@@ -318,6 +326,9 @@ export default function Admindashboard() {
               {activeTab === "rides" && (
                 <RideManagement
                   rides={rides}
+                  users={users}
+                  drivers={drivers}
+                  payments={payments}
                   setRides={setRides}
                   setSelectedRow={setSelectedRow}
                   setModalMode={setModalMode}
@@ -327,6 +338,7 @@ export default function Admindashboard() {
               {activeTab === "payments" && (
                 <PaymentManagement
                   payments={payments}
+                  users={users}
                   setPayments={setPayments}
                   setSelectedRow={setSelectedRow}
                   setModalMode={setModalMode}

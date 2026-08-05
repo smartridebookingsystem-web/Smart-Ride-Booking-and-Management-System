@@ -181,37 +181,34 @@ export default function SearchRide() {
    * ----------------------------------------
    */
   const calculateDistance = () => {
-    if (!pickup || !drop) {
-      return Number((Math.random() * 10 + 3).toFixed(1));
+    if (pickup && drop && Array.isArray(pickup) && Array.isArray(drop) && pickup.length === 2 && drop.length === 2) {
+      const rad = Math.PI / 180;
+      const dLat = (drop[0] - pickup[0]) * rad;
+      const dLon = (drop[1] - pickup[1]) * rad;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(pickup[0] * rad) *
+        Math.cos(drop[0] * rad) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      let distance = Number((6371 * c).toFixed(1));
+      if (distance >= 0.5) return distance;
     }
 
-    const rad = Math.PI / 180;
+    // Deterministic fallback based on pickup & drop names
+    const src = String(pickupName || "").toLowerCase().trim();
+    const dst = String(dropName || "").toLowerCase().trim();
+    const combined = src + dst;
+    if (!combined) return 4.5;
 
-    const dLat = (drop[0] - pickup[0]) * rad;
-    const dLon = (drop[1] - pickup[1]) * rad;
-
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(pickup[0] * rad) *
-      Math.cos(drop[0] * rad) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-
-    const c =
-      2 *
-      Math.atan2(
-        Math.sqrt(a),
-        Math.sqrt(1 - a)
-      );
-
-    let distance = Number(
-      (6371 * c).toFixed(1)
-    );
-
-    if (distance < 1) {
-      distance = 1.5;
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+      hash = (hash << 5) - hash + combined.charCodeAt(i);
+      hash |= 0;
     }
-
+    const posHash = Math.abs(hash);
+    const distance = Number((2.2 + (posHash % 143) / 10).toFixed(1));
     return distance;
   };
 
@@ -384,24 +381,30 @@ export default function SearchRide() {
         createdRide?.rideId ??
         createdRide?.id;
 
-      /*
-       * IMPORTANT:
-       * Do NOT generate a fake successful booking
-       * when the backend fails.
-       *
-       * The database is the source of truth.
-       */
+      // Generate a consistent 4-digit Trip OTP for this booking based on rideId
+      const generatedOtp = String(1000 + (Number(rideId || 1) * 73) % 9000);
+      if (rideId) {
+        sessionStorage.setItem(`otp_${rideId}`, generatedOtp);
+        localStorage.setItem(`otp_${rideId}`, generatedOtp);
+        if (rideResult?.fare) {
+          const fareNum = Number(rideResult.fare);
+          sessionStorage.setItem(`fare_${rideId}`, fareNum);
+          localStorage.setItem(`fare_${rideId}`, fareNum);
+          sessionStorage.setItem(`fare_SR${1000 + Number(rideId)}`, fareNum);
+          localStorage.setItem(`fare_SR${1000 + Number(rideId)}`, fareNum);
+          sessionStorage.setItem(`fare_RIDE-${rideId}`, fareNum);
+          localStorage.setItem(`fare_RIDE-${rideId}`, fareNum);
+        }
+      }
 
       setBookingSuccess({
-        message: `Ride request #${rideId ?? "created"
-          } successfully saved to the database.`,
+        message: `Ride request #${rideId ?? "created"} successfully saved to the database.`,
         rideId,
         source: createdRide?.source,
-        destination:
-          createdRide?.destination,
-        vehicleId:
-          createdRide?.vehicleId,
+        destination: createdRide?.destination,
+        vehicleId: createdRide?.vehicleId,
         status: createdRide?.status,
+        otpCode: generatedOtp,
       });
 
       setRideResult(null);
@@ -550,13 +553,29 @@ export default function SearchRide() {
               </p>
 
               {bookingSuccess.rideId && (
-                <small>
+                <small className="d-block mb-1">
                   Ride ID:{" "}
                   <strong>
                     #{bookingSuccess.rideId}
                   </strong>
                 </small>
               )}
+
+              {bookingSuccess.otpCode && (
+                <div className="mt-2 p-2 px-3 bg-white rounded-3 border border-success-subtle d-inline-flex align-items-center gap-2.5 shadow-sm">
+                  <i className="bi bi-shield-lock-fill text-warning fs-5"></i>
+                  <div>
+                    <span className="text-muted d-block" style={{ fontSize: "0.75rem", fontWeight: 600 }}>
+                      RIDER TRIP OTP (SHARE WITH DRIVER TO START TRIP)
+                    </span>
+                    <strong className="fs-5 text-dark font-monospace" style={{ letterSpacing: "3px" }}>
+                      {bookingSuccess.otpCode}
+                    </strong>
+                  </div>
+                </div>
+              )}
+
+
             </div>
 
             <button

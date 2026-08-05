@@ -164,12 +164,18 @@ export default function RideRequests() {
     try {
       setAcceptingRideId(ride.rideId);
 
+      // Generate 4-digit trip OTP when driver accepts request
+      const generatedOtp = String(Math.floor(1000 + Math.random() * 9000));
+      sessionStorage.setItem(`otp_${ride.rideId}`, generatedOtp);
+      localStorage.setItem(`otp_${ride.rideId}`, generatedOtp);
+
       console.log(
-        "%c[Driver] ✅ Accepting ride:",
+        "%c[Driver] ✅ Accepting ride & OTP generated:",
         "color: #22c55e; font-weight: bold;",
         {
           rideId: ride.rideId,
           driverId,
+          otp: generatedOtp,
         }
       );
 

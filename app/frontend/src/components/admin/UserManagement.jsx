@@ -12,16 +12,23 @@ export default function UserManagement({ users, setUsers, setSelectedRow, setMod
     { header: "Status", field: "statusBadge" },
   ];
 
-  const activeUsers = users.filter((u) => String(u.status || "").toLowerCase() !== "deactivated");
+  const activeUsers = users.filter((u) => {
+    const s = String(u.status || "").toLowerCase();
+    return s !== "deactivated" && s !== "inactive" && s !== "disabled" && s !== "suspended";
+  });
 
-  const tableData = activeUsers.map((u) => ({
-    ...u,
-    statusBadge: (
-      <span className={`badge ${String(u.status || "").toLowerCase() === "deactivated" ? "bg-danger" : "bg-success"} px-2 py-1`}>
-        {u.status || "Active"}
-      </span>
-    ),
-  }));
+  const tableData = activeUsers.map((u) => {
+    const s = String(u.status || "").toLowerCase();
+    const isActive = s === "active" || s === "verified" || !s;
+    return {
+      ...u,
+      statusBadge: (
+        <span className={`badge ${isActive ? "bg-success" : "bg-danger"} px-2.5 py-1 fw-semibold`}>
+          {isActive ? "Active" : "Inactive"}
+        </span>
+      ),
+    };
+  });
 
   const handleDelete = async (row) => {
     const uId = row.userId || row.id;

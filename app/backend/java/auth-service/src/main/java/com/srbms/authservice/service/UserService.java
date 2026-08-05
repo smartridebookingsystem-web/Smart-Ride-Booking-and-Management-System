@@ -79,16 +79,25 @@ public class UserService {
         userRepository.save(user);
 
         if (user.getRole() != null && "driver".equalsIgnoreCase(user.getRole().getRoleValue())) {
-            Optional<Driver> driverOpt = driverRepository.findByUser_UserId(userId);
-            driverOpt.ifPresent(driver -> {
-                if (updates.containsKey("status") && updates.get("status") != null) {
-                    driver.setStatus(String.valueOf(updates.get("status")));
-                }
-                if (updates.containsKey("licenseNo") && updates.get("licenseNo") != null) {
-                    driver.setLicenseNo(String.valueOf(updates.get("licenseNo")));
-                }
-                driverRepository.save(driver);
-            });
+            Driver driver = driverRepository.findByUser_UserId(userId)
+                    .orElseGet(() -> new Driver(user, "N/A", "unverified"));
+
+            if (updates.containsKey("status") && updates.get("status") != null) {
+                driver.setStatus(String.valueOf(updates.get("status")));
+            }
+            if (updates.containsKey("licenseNo") && updates.get("licenseNo") != null) {
+                driver.setLicenseNo(String.valueOf(updates.get("licenseNo")));
+            }
+            if (updates.containsKey("license_no") && updates.get("license_no") != null) {
+                driver.setLicenseNo(String.valueOf(updates.get("license_no")));
+            }
+
+            Object pdfObj = updates.get("licensePdfUrl") != null ? updates.get("licensePdfUrl") : updates.get("license_pdf_url");
+            if (pdfObj != null && !String.valueOf(pdfObj).isBlank()) {
+                driver.setLicensePdfUrl(String.valueOf(pdfObj));
+            }
+
+            driverRepository.saveAndFlush(driver);
         }
 
         return mapToUserProfileResponse(user);

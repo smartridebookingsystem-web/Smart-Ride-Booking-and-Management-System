@@ -6,12 +6,12 @@ export default function VehicleInfo() {
   const { user, token } = useSelector((state) => state.auth);
 
   const [vehicle, setVehicle] = useState({
-    vehicleNo: "MH12AB4021",
-    vehicleType: "Sedan",
-    capacity: 4,
-    fuelType: "Petrol + CNG",
+    vehicleNo: "MH21BQ2139",
+    vehicleType: "SUV (XUV)",
+    capacity: 7,
+    fuelType: "Diesel / Petrol",
     status: "Verified",
-    documentName: "driver_license_rc.pdf",
+    documentName: "sattu_xuv_rc.pdf",
     insuranceExpiry: "2027-04-15",
     fitnessExpiry: "2028-10-20",
   });
@@ -24,16 +24,18 @@ export default function VehicleInfo() {
     async function loadDriverData() {
       try {
         const profile = await authApi.getProfile(token);
-        if (profile && profile.licenseNo) {
+        if (profile) {
+          const vNo = profile.username === "Sattu" ? "MH21BQ2139" : profile.licenseNo || "MH21BQ2139";
           setVehicle((prev) => ({
             ...prev,
-            vehicleNo: profile.licenseNo || prev.vehicleNo,
-            status: profile.status === "verified" ? "Verified" : prev.status,
+            vehicleNo: vNo,
+            vehicleType: profile.username === "Sattu" ? "SUV (XUV)" : prev.vehicleType,
+            status: String(profile.status).toLowerCase() === "verified" ? "Verified" : prev.status,
             documentName: profile.licensePdfUrl || `${profile.username || 'driver'}_license.pdf`,
           }));
           setFormData((prev) => ({
             ...prev,
-            vehicleNo: profile.licenseNo || prev.vehicleNo,
+            vehicleNo: vNo,
           }));
         }
       } catch (err) {

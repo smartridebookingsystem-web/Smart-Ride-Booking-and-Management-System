@@ -64,6 +64,11 @@ public class AuthService {
             throw new RuntimeException("Invalid mobile number/username or password");
         }
 
+        String userStatus = user.getStatus() != null ? user.getStatus().toLowerCase() : "active";
+        if ("inactive".equals(userStatus) || "deactivated".equals(userStatus) || "disabled".equals(userStatus) || "suspended".equals(userStatus)) {
+            throw new RuntimeException("Your account is currently Inactive. Please contact customer support to reactivate your account.");
+        }
+
         String roleName = user.getRole() != null ? user.getRole().getRoleValue() : "rider";
         String token = jwtUtil.generateToken(user.getUserId(), user.getUsername(), user.getEmail(), roleName);
 
@@ -117,7 +122,11 @@ public class AuthService {
         user.setDob(registerRequest.getDob());
         user.setGender(registerRequest.getGender());
         user.setRole(role);
-        user.setStatus("active");
+        if ("driver".equalsIgnoreCase(requestedRole)) {
+            user.setStatus("Pending Verification");
+        } else {
+            user.setStatus("active");
+        }
         user.setProfileImage(registerRequest.getProfileImage() != null ? registerRequest.getProfileImage() : "default.jpg");
 
         User savedUser = userRepository.save(user);

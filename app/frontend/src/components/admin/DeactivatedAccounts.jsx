@@ -41,7 +41,7 @@ export default function DeactivatedAccounts({ deactivatedUsers, setUsers, setDri
         {String(u.role || "User").toUpperCase()}
       </span>
     ),
-    statusBadge: <span className="badge bg-danger px-2.5 py-1">Deactivated</span>,
+    statusBadge: <span className="badge bg-danger px-2.5 py-1">Inactive</span>,
   }));
 
   return (

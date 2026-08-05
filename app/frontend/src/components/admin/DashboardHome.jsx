@@ -5,7 +5,10 @@ export default function DashboardHome({
   totalRidesCount,
   totalDriversCount,
   openComplaintsCount,
-  rides,
+  rides = [],
+  users = [],
+  drivers = [],
+  payments = [],
 }) {
   const [driverCount, setDriverCount] = useState(totalDriversCount ?? 0);
 
@@ -261,19 +264,38 @@ export default function DashboardHome({
                   <td colSpan={5} className="text-center text-muted py-4">No recent system activity recorded in database yet.</td>
                 </tr>
               ) : (
-                rides.slice(0, 5).map((r, i) => (
-                  <tr key={i}>
-                    <td className="fw-bold" style={{ color: "#FF6B00" }}>#RIDE-{r.rideId || r.id}</td>
-                    <td>{r.riderName || r.rider || `Rider #${r.userId}`}</td>
-                    <td>{r.driverName || r.driver || `Driver #${r.driverId || 'N/A'}`}</td>
-                    <td className="fw-semibold">₹{r.fare || 0}</td>
-                    <td>
-                      <span className={`badge ${r.status === 1 || r.status === "Completed" ? "bg-success" : r.status === 2 || r.status === "In Progress" ? "bg-warning text-dark" : "bg-danger"}`}>
-                        {r.status === 1 ? "Completed" : r.status === 2 ? "Pending" : String(r.status)}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                rides.slice(0, 5).map((r, i) => {
+                  const targetRiderId = String(r.userId || r.user_id || "");
+                  const matchedRider = users.find((u) => String(u.userId || u.id) === targetRiderId);
+                  const riderName = matchedRider ? (matchedRider.username || matchedRider.name) : (r.riderName || (targetRiderId ? `Rider #${targetRiderId}` : "N/A"));
+
+                  const targetDriverId = String(r.driverId || r.driver_id || "");
+                  const matchedDriver = targetDriverId && targetDriverId !== "null"
+                    ? drivers.find((d) => String(d.driverId) === targetDriverId)
+                    : null;
+                  const driverName = matchedDriver ? (matchedDriver.name || matchedDriver.username) : (targetDriverId && targetDriverId !== "null" ? `Driver #${targetDriverId}` : "Unassigned ⏳");
+
+                  const matchedPayment = payments.find((p) => String(p.rideId || p.ride_id) === String(r.rideId || r.ride_id || r.id));
+                  const fareAmount = matchedPayment ? (matchedPayment.totalFare || matchedPayment.netAmount) : (r.fare || r.fareAmount || 150);
+
+                  const rawStatus = r.status;
+                  const isCompleted = rawStatus === 1 || String(rawStatus).toLowerCase() === "completed";
+                  const isInProgress = rawStatus === 2 || String(rawStatus).toLowerCase() === "in progress" || String(rawStatus).toLowerCase() === "in_progress" || String(rawStatus).toLowerCase() === "pending" || String(rawStatus).toLowerCase() === "requested";
+
+                  return (
+                    <tr key={i}>
+                      <td className="fw-bold" style={{ color: "#FF6B00" }}>#RIDE-{r.rideId || r.id}</td>
+                      <td className="fw-semibold text-dark">{riderName}</td>
+                      <td className="fw-semibold text-dark">{driverName}</td>
+                      <td className="fw-bold text-success">₹{Number(fareAmount || 0).toFixed(2)}</td>
+                      <td>
+                        <span className={`badge ${isCompleted ? "bg-success" : isInProgress ? "bg-warning text-dark" : "bg-danger"} px-2.5 py-1.5 fs-7 rounded-pill`}>
+                          {isCompleted ? "Completed 🟢" : isInProgress ? "In Progress 🟡" : "Cancelled 🔴"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

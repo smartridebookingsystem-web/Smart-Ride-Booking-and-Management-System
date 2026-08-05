@@ -1406,24 +1406,22 @@
 }
 
 /* ==========================================
-   Admin Dashboard Bold White Font Overrides
+   Admin Dashboard & Modal Specific Styling
 ========================================== */
-.admin-dashboard-wrapper .fw-bold,
-.admin-dashboard-wrapper .fw-semibold,
-.admin-dashboard-wrapper strong,
-.admin-dashboard-wrapper b,
-.admin-dashboard-wrapper .text-muted.fw-bold,
-.admin-dashboard-wrapper .text-secondary.fw-bold,
-.admin-dashboard-wrapper .text-dark.fw-bold,
-.admin-dashboard-wrapper label.fw-bold,
-.admin-dashboard-wrapper label.fw-semibold,
-.admin-dashboard-wrapper th.fw-bold,
-.admin-dashboard-wrapper h1.fw-bold,
-.admin-dashboard-wrapper h2.fw-bold,
-.admin-dashboard-wrapper h3.fw-bold,
-.admin-dashboard-wrapper h4.fw-bold,
-.admin-dashboard-wrapper h5.fw-bold,
-.admin-dashboard-wrapper h6.fw-bold {
-  color: #ffffff !important;
+.admin-dashboard-modal .modal-content,
+.modal-content {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
 }
+
+.modal-field-label {
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+.modal-field-value {
+  color: #0f172a !important;
+  font-weight: 600 !important;
+}
+
 

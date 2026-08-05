@@ -17,7 +17,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/rides")
-@CrossOrigin(origins = "*")
 public class RideController {
 
     private final RideService rideService;
@@ -204,6 +203,19 @@ public class RideController {
                         request.getDriverId()
                 )
         );
+    }
+
+    /**
+     * Get OTP for ride from MySQL Database.
+     *
+     * GET /api/rides/{id}/otp
+     */
+    @GetMapping("/{id}/otp")
+    public ResponseEntity<java.util.Map<String, String>> getRideOtp(
+            @PathVariable("id") Integer id) {
+
+        String otp = rideService.getRideOtpFromDb(id);
+        return ResponseEntity.ok(java.util.Map.of("rideId", String.valueOf(id), "otp", otp));
     }
 }
 
