@@ -165,7 +165,7 @@ export default function DriverIncomingRequest({
           className="btn btn-success btn-lg flex-grow-1 fw-bold py-3 rounded-3 shadow-lg d-flex justify-content-center align-items-center gap-2"
           onClick={handleAcceptRide}
           style={{ background: "linear-gradient(135deg, #22C55E 0%, #16A34A 100%)", border: "none", fontSize: "1.1rem", boxShadow: "0 8px 24px rgba(34, 197, 94, 0.4)" }}>
-          <i className="bi bi-check-circle-fill fs-5"></i>ACCEPT RIDE ({pendingRequest.estimatedFare})
+          <i className="bi bi-check-circle-fill fs-5"></i>ACCEPT RIDE
         </button>
         <button type="button"
           className="btn btn-outline-secondary px-4 py-3 rounded-3 fw-bold text-light"

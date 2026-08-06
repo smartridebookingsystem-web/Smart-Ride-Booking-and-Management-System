@@ -75,6 +75,24 @@ services:
       mysql-db:
         condition: service_healthy
 
+  # Java AI Service (Port 8084)
+  smartride-ai-service:
+    build:
+      context: ./app/backend/java/smartride-ai-service
+      dockerfile: Dockerfile
+    container_name: srbms-ai-service
+    restart: always
+    ports:
+      - "${AI_SERVICE_PORT:-8084}:8084"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - JWT_SECRET=${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:-http://eureka-server:8761/eureka/}
+      - EUREKA_INSTANCE_LEASE_RENEWAL_INTERVAL_IN_SECONDS=5
+      - EUREKA_INSTANCE_LEASE_EXPIRATION_DURATION_IN_SECONDS=10
+    depends_on:
+      - eureka-server
+
   # Java Ride Service (Port 8082)
   ride-service:
     build:
@@ -114,6 +132,7 @@ services:
       - eureka-server
       - auth-service
       - payment-service
+      - smartride-ai-service
       - ride-service
 
   # Admin Frontend (Port 5173)

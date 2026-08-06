@@ -509,7 +509,7 @@ export default function DriverHome() {
     try {
       const phoneToUse =
         pendingRequest?.phone ||
-        "9876543204";
+        "9876543210";
 
       await authApi.sendOtp(
         phoneToUse
@@ -554,7 +554,7 @@ export default function DriverHome() {
     const rId = pendingRequest?.rideId;
 
     try {
-      const phoneToUse = pendingRequest?.phone || "9876543204";
+      const phoneToUse = pendingRequest?.phone || "9876543210";
 
       let verified = false;
 
@@ -1502,7 +1502,23 @@ export default function DriverHome() {
       ===================================================== */}
 
       <DriverRecentTrips
-        recentRides={recentRides}
+        recentRides={
+          ridesList.filter(
+            (r) =>
+              r.status === 3 ||
+              r.status === "3" ||
+              String(r.status).toUpperCase() === "COMPLETED" ||
+              String(r.status).toUpperCase() === "FINISHED"
+          ).length > 0
+            ? ridesList.filter(
+                (r) =>
+                  r.status === 3 ||
+                  r.status === "3" ||
+                  String(r.status).toUpperCase() === "COMPLETED" ||
+                  String(r.status).toUpperCase() === "FINISHED"
+              )
+            : ridesList
+        }
       />
 
       {/* =====================================================

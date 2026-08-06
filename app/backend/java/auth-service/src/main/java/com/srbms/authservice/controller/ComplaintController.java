@@ -18,7 +18,7 @@ public class ComplaintController {
     @Autowired
     private ComplaintService complaintService;
 
-    @GetMapping
+    @GetMapping({"", "/", "/all"})
     public ResponseEntity<List<Complaint>> getAllComplaints() {
         return ResponseEntity.ok(complaintService.getAllComplaints());
     }

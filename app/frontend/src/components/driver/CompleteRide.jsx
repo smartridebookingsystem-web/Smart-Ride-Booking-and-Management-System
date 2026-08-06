@@ -96,10 +96,10 @@ export default function CompleteRide() {
     <div>
       {/* Title */}
       <div className="border-bottom pb-3 mb-4">
-        <h4 className="fw-bold text-dark mb-1">
+        <h4 className="fw-bold text-light mb-1">
           <i className="bi bi-check-circle-fill text-primary me-2"></i>Complete Active Ride
         </h4>
-        <p className="text-secondary small mb-0">
+        <p className="text-light o-70 small mb-0">
           Verify passenger payment and mark trip as completed.
         </p>
       </div>

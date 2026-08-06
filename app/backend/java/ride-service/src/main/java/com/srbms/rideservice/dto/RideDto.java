@@ -11,6 +11,7 @@ public class RideDto {
     private Integer status;
     private Integer driverId;
     private String createdAt;
+    private Double fare;
 
     public RideDto() {
     }
@@ -33,6 +34,28 @@ public class RideDto {
         this.status = status;
         this.driverId = driverId;
         this.createdAt = createdAt;
+    }
+
+    public RideDto(
+            Integer rideId,
+            Integer userId,
+            Integer vehicleId,
+            String source,
+            String destination,
+            Integer status,
+            Integer driverId,
+            String createdAt,
+            Double fare) {
+
+        this.rideId = rideId;
+        this.userId = userId;
+        this.vehicleId = vehicleId;
+        this.source = source;
+        this.destination = destination;
+        this.status = status;
+        this.driverId = driverId;
+        this.createdAt = createdAt;
+        this.fare = fare;
     }
 
     public Integer getRideId() {
@@ -97,6 +120,14 @@ public class RideDto {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Double getFare() {
+        return fare;
+    }
+
+    public void setFare(Double fare) {
+        this.fare = fare;
     }
 }
 

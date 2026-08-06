@@ -18,6 +18,8 @@ public class CreateRideRequest {
     @NotBlank(message = "Destination location is required")
     private String destination;
 
+    private Double fare;
+
     public CreateRideRequest() {
     }
 
@@ -31,6 +33,20 @@ public class CreateRideRequest {
         this.vehicleId = vehicleId;
         this.source = source;
         this.destination = destination;
+    }
+
+    public CreateRideRequest(
+            Integer userId,
+            Integer vehicleId,
+            String source,
+            String destination,
+            Double fare) {
+
+        this.userId = userId;
+        this.vehicleId = vehicleId;
+        this.source = source;
+        this.destination = destination;
+        this.fare = fare;
     }
 
     public Integer getUserId() {
@@ -63,6 +79,14 @@ public class CreateRideRequest {
 
     public void setDestination(String destination) {
         this.destination = destination;
+    }
+
+    public Double getFare() {
+        return fare;
+    }
+
+    public void setFare(Double fare) {
+        this.fare = fare;
     }
 }
 

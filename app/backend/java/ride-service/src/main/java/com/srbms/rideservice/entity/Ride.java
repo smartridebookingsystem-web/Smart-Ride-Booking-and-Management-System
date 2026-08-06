@@ -26,6 +26,9 @@ public class Ride {
     @Column(name = "status")
     private Integer status; // 1 = completed, 2 = inprogress, 0 = requested, 3 = accepted
 
+    @Column(name = "fare")
+    private Double fare;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private java.time.LocalDateTime createdAt;
 
@@ -37,6 +40,15 @@ public class Ride {
         this.source = source;
         this.destination = destination;
         this.status = status;
+    }
+
+    public Ride(Integer userId, Integer vehicleId, String source, String destination, Integer status, Double fare) {
+        this.userId = userId;
+        this.vehicleId = vehicleId;
+        this.source = source;
+        this.destination = destination;
+        this.status = status;
+        this.fare = fare;
     }
 
     public Integer getRideId() {
@@ -93,5 +105,13 @@ public class Ride {
 
     public void setCreatedAt(java.time.LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Double getFare() {
+        return fare;
+    }
+
+    public void setFare(Double fare) {
+        this.fare = fare;
     }
 }

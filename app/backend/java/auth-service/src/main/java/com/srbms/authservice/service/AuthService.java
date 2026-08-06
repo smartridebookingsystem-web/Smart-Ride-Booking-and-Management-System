@@ -36,22 +36,24 @@ public class AuthService {
     private JwtUtil jwtUtil;
 
     public JwtResponse login(LoginRequest loginRequest) {
-        String identifier = loginRequest.getEmailOrUsername();
+        String identifier = loginRequest.getEmailOrUsername() != null ? loginRequest.getEmailOrUsername() : loginRequest.getPhone();
         if (identifier == null || identifier.isBlank()) {
-            throw new RuntimeException("Mobile number or username is required.");
+            throw new RuntimeException("Mobile number is required for login.");
         }
 
-        // Try searching by phone, then username, then email
-        Optional<User> userOpt = userRepository.findByPhone(identifier);
+        String cleanPhone = identifier.replaceAll("^\\+91", "").replaceAll("[^0-9]", "");
+
+        // Search exclusively by mobile number (clean 10-digit, +91 formatted, or raw phone input)
+        Optional<User> userOpt = userRepository.findByPhone(cleanPhone);
         if (userOpt.isEmpty()) {
-            userOpt = userRepository.findByUsername(identifier);
+            userOpt = userRepository.findByPhone("+91" + cleanPhone);
         }
-        if (userOpt.isEmpty() && identifier.contains("@")) {
-            userOpt = userRepository.findByEmail(identifier);
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByPhone(identifier);
         }
 
         if (userOpt.isEmpty()) {
-            throw new RuntimeException("Invalid mobile number/username or password");
+            throw new RuntimeException("Invalid mobile number or password");
         }
 
         User user = userOpt.get();
@@ -61,7 +63,7 @@ public class AuthService {
                 || loginRequest.getPassword().equals(user.getPassword());
 
         if (!passwordMatches) {
-            throw new RuntimeException("Invalid mobile number/username or password");
+            throw new RuntimeException("Invalid mobile number or password");
         }
 
         String userStatus = user.getStatus() != null ? user.getStatus().toLowerCase() : "active";

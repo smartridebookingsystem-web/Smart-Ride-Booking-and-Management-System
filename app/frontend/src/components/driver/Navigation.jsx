@@ -55,6 +55,9 @@ export default function Navigation() {
           setActiveTrip({
             rawRideId: rawId,
             id: `RIDE-${rawId}`,
+            fare: targetRide.fare,
+            source: targetRide.source || targetRide.pickup,
+            vehicleId: targetRide.vehicleId,
             riderName: getRiderName(targetRide),
             phone: "+91 98765 43210",
             pickup: targetRide.source || targetRide.pickup || "FC Road, Shivajinagar, Pune",
@@ -92,7 +95,7 @@ export default function Navigation() {
     setOtpError("");
     setOtpSentNotice("");
     try {
-      const phoneToUse = activeTrip?.phone || "9876543204";
+      const phoneToUse = activeTrip?.phone || "9876543210";
       await authApi.sendOtp(phoneToUse);
       setOtpSentNotice("✅ Twilio SMS OTP sent to rider! (Dev fallback code: 123456)");
     } catch (err) {
@@ -235,8 +238,8 @@ export default function Navigation() {
               <span className="badge bg-primary text-white px-3 py-1.5 fs-7 fw-bold">
                 {activeTrip.id}
               </span>
-              <span className="fw-semibold text-secondary small">
-                Est. Time: <strong className="text-dark">{activeTrip.estimatedTime}</strong> ({activeTrip.distance})
+              <span className="fw-semibold text-light small">
+                Est. Time: <strong>{activeTrip.estimatedTime}</strong> ({activeTrip.distance})
               </span>
             </div>
 
@@ -282,7 +285,7 @@ export default function Navigation() {
         {/* Right: Passenger Info & Controls */}
         <div className="col-lg-5">
           <div className="card border-0 shadow-sm p-4 h-100" style={{ borderRadius: "16px", background: "var(--card)" }}>
-            <h5 className="fw-bold text-dark mb-3">Passenger Information</h5>
+            <h5 className="fw-bold text-light mb-3">Passenger Information</h5>
 
             <div className="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-4">
               <div
@@ -299,16 +302,16 @@ export default function Navigation() {
 
             <div className="mb-4">
               <div className="d-flex justify-content-between mb-2">
-                <span className="text-secondary">Estimated Fare:</span>
-                <strong className="text-dark fs-5">{activeTrip.totalFare}</strong>
+                <span className="text-light">Estimated Fare:</span>
+                <strong className="text-light fs-5">₹{rideApi.calculateRideFare(activeTrip)}</strong>
               </div>
               <div className="d-flex justify-content-between mb-2">
-                <span className="text-secondary">Payment Method:</span>
+                <span className="text-light">Payment Method:</span>
                 <span className="badge bg-light text-dark border">{activeTrip.paymentMode}</span>
               </div>
               <div className="d-flex justify-content-between">
-                <span className="text-secondary">Assigned Vehicle:</span>
-                <strong className="text-dark">{activeTrip.vehicleNo}</strong>
+                <span className="text-light">Assigned Vehicle:</span>
+                <strong className="text-light">{activeTrip.vehicleNo}</strong>
               </div>
             </div>
 

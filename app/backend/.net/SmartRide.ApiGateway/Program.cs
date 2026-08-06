@@ -3,6 +3,9 @@ using SmartRide.ApiGateway.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Server Port to 8090
+builder.WebHost.UseUrls("http://0.0.0.0:8090");
+
 // Add Services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

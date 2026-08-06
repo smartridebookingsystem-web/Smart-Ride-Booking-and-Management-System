@@ -5,6 +5,9 @@ using SmartRide.AuthService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Server Port to 8091
+builder.WebHost.UseUrls("http://0.0.0.0:8091");
+
 // Add Services to DI container
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

@@ -21,7 +21,7 @@ export default function Login() {
     }
   }, [authState, navigate]);
 
-  const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
@@ -35,10 +35,17 @@ export default function Login() {
 
     setError("");
     setMsg("");
+
+    const cleanPhone = phone.replace(/[^0-9]/g, "");
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setError("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const data = await authApi.login(username, password);
+      const data = await authApi.login(phone.trim(), password);
 
       // Determine role mapping (1=admin, 2=driver, 3=rider)
       const roleStr = (data.role || "").toLowerCase();
@@ -128,9 +135,9 @@ export default function Login() {
           </p>
 
           <form onSubmit={handleSubmit}>
-            {/* Mobile Number / Username */}
+            {/* Mobile Number */}
             <div className="mb-3">
-              <label htmlFor="username" className="form-label fw-semibold">
+              <label htmlFor="phone" className="form-label fw-semibold">
                 Mobile Number
               </label>
 
@@ -140,14 +147,15 @@ export default function Login() {
                 </span>
 
                 <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  autoComplete="username"
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
                   className="form-control"
-                  placeholder="Enter Mobile Number"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter 10-digit Mobile Number"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  maxLength={13}
                   required
                 />
               </div>

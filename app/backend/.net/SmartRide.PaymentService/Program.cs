@@ -10,6 +10,9 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Server Port to 8093
+builder.WebHost.UseUrls("http://0.0.0.0:8093");
+
 // Add Controllers & OpenAPI/Swagger
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

@@ -27,8 +27,8 @@ export default function Driverdashboard() {
       try {
         const rides = await rideApi.getAllRides();
         if (Array.isArray(rides) && rides.length > 0) {
-          const fareSum = rides.reduce((sum, r) => sum + (r.fare || 250), 0);
-          setTotalEarningsBadge(`₹${fareSum}`);
+          const fareSum = rides.reduce((sum, r) => sum + parseFloat(rideApi.calculateRideFare(r)), 0);
+          setTotalEarningsBadge(`₹${fareSum.toFixed(2)}`);
           const pendingCount = rides.filter(r => r.status === 2 || r.status === 0).length;
           setPendingBadge(`${pendingCount > 0 ? pendingCount : 1} New`);
         }

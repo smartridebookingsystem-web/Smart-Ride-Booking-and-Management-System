@@ -180,15 +180,6 @@ export default function Layout() {
 
                 {/* Book Ride */}
 
-                <li className="nav-item ms-lg-3 mt-3 mt-lg-0">
-                  <NavLink
-                    to="/rider/search-ride"
-                    className="btn btn-outline-primary"
-                    onClick={closeNavbar}
-                  >
-                    Book Ride
-                  </NavLink>
-                </li>
               </ul>
             )}
           </div>

@@ -63,7 +63,7 @@ export default function MyBookings() {
   };
 
   const formatDate = (d) => {
-    if (!d) return "10 Jun 2026 • 10:00 AM";
+    if (!d) return "";
     try {
       const dt = new Date(d);
       if (isNaN(dt.getTime())) return String(d);
@@ -362,9 +362,8 @@ export default function MyBookings() {
         {/* All Bookings Tab */}
         <div className="col-lg-3 col-6">
           <div
-            className={`card border-0 shadow-sm rounded-4 p-3 cursor-pointer transition-all ${
-              selectedTab === "ALL" ? "border border-2 border-warning bg-white" : "bg-white"
-            }`}
+            className={`card border-0 shadow-sm rounded-4 p-3 cursor-pointer transition-all ${selectedTab === "ALL" ? "border border-2 border-warning bg-white" : "bg-white"
+              }`}
             onClick={() => {
               setSelectedTab("ALL");
               setStatusFilter("ALL");
@@ -386,9 +385,8 @@ export default function MyBookings() {
         {/* Confirmed / Active Tab */}
         <div className="col-lg-3 col-6">
           <div
-            className={`card border-0 shadow-sm rounded-4 p-3 cursor-pointer transition-all ${
-              selectedTab === "CONFIRMED" ? "border border-2 border-success bg-white" : "bg-white"
-            }`}
+            className={`card border-0 shadow-sm rounded-4 p-3 cursor-pointer transition-all ${selectedTab === "CONFIRMED" ? "border border-2 border-success bg-white" : "bg-white"
+              }`}
             onClick={() => {
               setSelectedTab("CONFIRMED");
               setStatusFilter("CONFIRMED");
@@ -410,9 +408,8 @@ export default function MyBookings() {
         {/* Completed Tab */}
         <div className="col-lg-3 col-6">
           <div
-            className={`card border-0 shadow-sm rounded-4 p-3 cursor-pointer transition-all ${
-              selectedTab === "COMPLETED" ? "border border-2 border-primary bg-white" : "bg-white"
-            }`}
+            className={`card border-0 shadow-sm rounded-4 p-3 cursor-pointer transition-all ${selectedTab === "COMPLETED" ? "border border-2 border-primary bg-white" : "bg-white"
+              }`}
             onClick={() => {
               setSelectedTab("COMPLETED");
               setStatusFilter("COMPLETED");
@@ -434,9 +431,8 @@ export default function MyBookings() {
         {/* Cancelled Tab */}
         <div className="col-lg-3 col-6">
           <div
-            className={`card border-0 shadow-sm rounded-4 p-3 cursor-pointer transition-all ${
-              selectedTab === "CANCELLED" ? "border border-2 border-danger bg-white" : "bg-white"
-            }`}
+            className={`card border-0 shadow-sm rounded-4 p-3 cursor-pointer transition-all ${selectedTab === "CANCELLED" ? "border border-2 border-danger bg-white" : "bg-white"
+              }`}
             onClick={() => {
               setSelectedTab("CANCELLED");
               setStatusFilter("CANCELLED");
@@ -789,7 +785,7 @@ export default function MyBookings() {
         <div className="modal fade show d-block bg-dark bg-opacity-75 shadow-lg" tabIndex="-1" style={{ backdropFilter: "blur(6px)", zIndex: 1070 }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
             <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden" style={{ background: "#0F172A", color: "#fff" }}>
-              
+
               {/* Header */}
               <div className="modal-header border-bottom border-white border-opacity-10 p-4" style={{ background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)" }}>
                 <div>
@@ -800,7 +796,7 @@ export default function MyBookings() {
               </div>
 
               <div className="modal-body p-4 text-white">
-                
+
                 {/* LIVE TRIP STAGE PROGRESS - Modern Line Stepper */}
                 {(() => {
                   const currentStage = getTripStageLevel(trackingRide.status);
@@ -926,9 +922,8 @@ export default function MyBookings() {
                     {/* Cash Option */}
                     <div className="col-md-6">
                       <div
-                        className={`p-3 rounded-3 border d-flex align-items-center gap-3 cursor-pointer ${
-                          paymentOption === "CASH" ? "border-success bg-success bg-opacity-20 text-white fw-bold" : "border-secondary bg-dark text-light"
-                        }`}
+                        className={`p-3 rounded-3 border d-flex align-items-center gap-3 cursor-pointer ${paymentOption === "CASH" ? "border-success bg-success bg-opacity-20 text-white fw-bold" : "border-secondary bg-dark text-light"
+                          }`}
                         style={{ cursor: "pointer" }}
                         onClick={() => setPaymentOption("CASH")}
                       >
@@ -944,9 +939,8 @@ export default function MyBookings() {
                     {/* Online Digital UPI Option */}
                     <div className="col-md-6">
                       <div
-                        className={`p-3 rounded-3 border d-flex align-items-center gap-3 cursor-pointer ${
-                          paymentOption === "ONLINE" ? "border-primary bg-primary bg-opacity-20 text-white fw-bold" : "border-secondary bg-dark text-light"
-                        }`}
+                        className={`p-3 rounded-3 border d-flex align-items-center gap-3 cursor-pointer ${paymentOption === "ONLINE" ? "border-primary bg-primary bg-opacity-20 text-white fw-bold" : "border-secondary bg-dark text-light"
+                          }`}
                         style={{ cursor: "pointer" }}
                         onClick={() => setPaymentOption("ONLINE")}
                       >
@@ -967,7 +961,7 @@ export default function MyBookings() {
                     <div className="p-3 rounded-3 bg-black bg-opacity-40 border border-white border-opacity-10 h-100">
                       <small className="text-light opacity-75 d-block text-uppercase mb-1" style={{ fontSize: "0.75rem" }}>Pickup Location</small>
                       <strong className="text-white d-block mb-3">{trackingRide.source || trackingRide.pickup || "Model Colony, Pune"}</strong>
-                      
+
                       <small className="text-light opacity-75 d-block text-uppercase mb-1" style={{ fontSize: "0.75rem" }}>Destination</small>
                       <strong className="text-white d-block">{trackingRide.destination || trackingRide.drop || "Hinjewadi Phase 1, Pune"}</strong>
                     </div>

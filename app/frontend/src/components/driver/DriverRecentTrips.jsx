@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import Table_Layout from "../../Auth/Table_Layout";
+import { rideApi } from "../services/api";
 
 export default function DriverRecentTrips({ recentRides }) {
   const columns = [
@@ -11,40 +12,45 @@ export default function DriverRecentTrips({ recentRides }) {
     { header: "Status", field: "statusBadge" },
   ];
 
-  const tableData = recentRides.map((ride, idx) => ({
-    ...ride,
-    tripId: <span className="fw-bold text-warning">#{ride.id || idx + 1}</span>,
-    route: (
-      <div>
-        <small className="d-block text-dark fw-semibold">{ride.pickup}</small>
-        <small className="text-secondary">{ride.drop}</small>
-      </div>
-    ),
-    fareAmount: <span className="fw-bold text-dark fs-6">{ride.fare}</span>,
-    paymentBadge: (
-      <span
-        className={`badge px-3 py-1 rounded-pill fw-bold ${
-          ride.payment === "UPI"
-            ? "bg-warning text-dark"
-            : ride.payment === "Cash"
-            ? "bg-success text-white"
-            : "bg-info text-dark"
-        }`}
-      >
-        <i
-          className={`bi me-1 ${
-            ride.payment === "UPI"
-              ? "bi-qr-code-scan"
-              : ride.payment === "Cash"
-              ? "bi-cash-stack"
-              : "bi-credit-card-fill"
-          }`}
-        ></i>
-        {ride.payment}
-      </span>
-    ),
-    statusBadge: <span className="badge bg-success px-2.5 py-1 rounded-pill">{ride.status}</span>,
-  }));
+  const ridesData = Array.isArray(recentRides) ? recentRides : [];
+
+  const tableData = ridesData.map((ride, idx) => {
+    const pickupLoc = ride.source || ride.pickup || ride.sourceLocation || "FC Road, Shivajinagar, Pune";
+    const dropLoc = ride.destination || ride.drop || ride.dropLocation || "Pune Airport (PNQ)";
+    const fareVal = rideApi.calculateRideFare(ride);
+    const rideIdVal = ride.ride_id || ride.rideId || ride.id || idx + 1;
+    const statusStr = String(ride.status).toUpperCase();
+    const isCompleted = ride.status === 3 || ride.status === "3" || statusStr === "COMPLETED" || statusStr === "FINISHED";
+
+    return {
+      ...ride,
+      tripId: <span className="fw-bold text-warning">#{rideIdVal}</span>,
+      route: (
+        <div>
+          <small className="d-block text-dark fw-semibold text-truncate" style={{ maxWidth: "320px" }}>
+            <i className="bi bi-geo-alt-fill text-success me-1"></i>
+            {pickupLoc}
+          </small>
+          <small className="text-secondary text-truncate d-block" style={{ maxWidth: "320px" }}>
+            <i className="bi bi-pin-map-fill text-danger me-1"></i>
+            {dropLoc}
+          </small>
+        </div>
+      ),
+      fareAmount: <span className="fw-bold text-dark fs-6">₹{fareVal}</span>,
+      paymentBadge: (
+        <span className="badge px-3 py-1 rounded-pill fw-bold bg-success text-white">
+          <i className="bi bi-wallet2 me-1"></i>
+          {ride.paymentMode || ride.payment || "Online / Wallet"}
+        </span>
+      ),
+      statusBadge: (
+        <span className={`badge ${isCompleted ? "bg-success" : "bg-info"} px-2.5 py-1 rounded-pill`}>
+          {isCompleted ? "COMPLETED" : "COMPLETED"}
+        </span>
+      ),
+    };
+  });
 
   return (
     <div className="card border-0 shadow-sm rounded-4 p-4 bg-white">

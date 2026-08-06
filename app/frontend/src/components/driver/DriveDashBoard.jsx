@@ -109,7 +109,7 @@ export default function DriveDashBoard() {
                   <tr key={idx}>
                     <td className="fw-bold">#{idx + 1}</td>
                     <td>{r.source || "Unknown"} → {r.destination || "Unknown"}</td>
-                    <td>₹{r.fare || 250}</td>
+                    <td>₹{rideApi.calculateRideFare(r)}</td>
                     <td>{r.status === 1 || r.status === "Completed" ? "Completed" : "In Progress"}</td>
                   </tr>
                 ))

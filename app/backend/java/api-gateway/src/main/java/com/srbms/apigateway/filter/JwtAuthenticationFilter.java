@@ -31,7 +31,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        if (routerValidator.isSecured.test(request)) {
+        boolean isSecured = routerValidator.isSecured.test(request);
+
+        if (isSecured) {
             if (this.isAuthMissing(request)) {
                 return this.onError(exchange, "Authorization header is missing", HttpStatus.UNAUTHORIZED);
             }
@@ -53,12 +55,34 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             String email = claims.getSubject();
 
             ServerHttpRequest modifiedRequest = exchange.getRequest().mutate()
-                    .header("X-User-Id", userId != null ? userId : "")
-                    .header("X-User-Role", role != null ? role : "")
+                    .header("X-User-Id", userId != null && !"null".equalsIgnoreCase(userId) ? userId : "")
+                    .header("X-User-Role", role != null && !"null".equalsIgnoreCase(role) ? role : "")
                     .header("X-User-Email", email != null ? email : "")
                     .build();
 
             return chain.filter(exchange.mutate().request(modifiedRequest).build());
+        } else if (!this.isAuthMissing(request)) {
+            try {
+                final String token = this.getAuthHeader(request);
+                if (token != null && token.startsWith("Bearer ")) {
+                    String jwtToken = token.substring(7);
+                    if (jwtUtil.isTokenValid(jwtToken)) {
+                        Claims claims = jwtUtil.getAllClaims(jwtToken);
+                        String userId = String.valueOf(claims.get("userId"));
+                        String role = String.valueOf(claims.get("role"));
+                        String email = claims.getSubject();
+
+                        ServerHttpRequest modifiedRequest = exchange.getRequest().mutate()
+                                .header("X-User-Id", userId != null && !"null".equalsIgnoreCase(userId) ? userId : "")
+                                .header("X-User-Role", role != null && !"null".equalsIgnoreCase(role) ? role : "")
+                                .header("X-User-Email", email != null ? email : "")
+                                .build();
+
+                        return chain.filter(exchange.mutate().request(modifiedRequest).build());
+                    }
+                }
+            } catch (Exception ignored) {
+            }
         }
 
         return chain.filter(exchange);

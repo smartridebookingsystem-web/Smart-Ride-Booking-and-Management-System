@@ -22,7 +22,7 @@ export default function Earnings() {
     fetchEarnings();
   }, []);
 
-  const totalFareSum = rides.reduce((sum, r) => sum + (r.fare || 250), 0);
+  const totalFareSum = rides.reduce((sum, r) => sum + parseFloat(rideApi.calculateRideFare(r)), 0);
   const walletBalance = rides.length > 0 ? `₹${(totalFareSum * 0.95).toFixed(2)}` : "₹0.00";
   const todayEarnings = rides.length > 0 ? `₹${totalFareSum.toFixed(2)}` : "₹0.00";
   const totalCompletedRides = rides.length;
@@ -43,21 +43,24 @@ export default function Earnings() {
     { header: "Status & Ref", field: "statusBadge" },
   ];
 
-  const tableData = rides.map((r, idx) => ({
-    id: `TXN-88${idx + 1}`,
-    txnId: <span className="fw-semibold text-primary">TXN-88{idx + 1}</span>,
-    txnDate: <span className="text-dark">Today</span>,
-    grossFare: <span className="text-dark fw-semibold">₹{r.fare || 250}</span>,
-    netPayout: <span className="text-success fw-bold">₹{((r.fare || 250) * 0.80).toFixed(2)}</span>,
-    statusBadge: (
-      <div>
-        <span className="badge bg-success text-white px-2 py-1">
-          <i className="bi bi-check-circle-fill me-1"></i>{r.paymentMode === "UPI" ? "Paid via UPI" : "Paid via Bank Transfer"}
-        </span>
-        <small className="d-block text-secondary fs-8 mt-0.5">UPI/{100000 + idx}/OK</small>
-      </div>
-    ),
-  }));
+  const tableData = rides.map((r, idx) => {
+    const calculatedFare = parseFloat(rideApi.calculateRideFare(r));
+    return {
+      id: `TXN-88${idx + 1}`,
+      txnId: <span className="fw-semibold text-primary">TXN-88{idx + 1}</span>,
+      txnDate: <span className="text-dark">Today</span>,
+      grossFare: <span className="text-dark fw-semibold">₹{calculatedFare.toFixed(2)}</span>,
+      netPayout: <span className="text-success fw-bold">₹{(calculatedFare * 0.80).toFixed(2)}</span>,
+      statusBadge: (
+        <div>
+          <span className="badge bg-success text-white px-2 py-1">
+            <i className="bi bi-check-circle-fill me-1"></i>{r.paymentMode === "UPI" ? "Paid via UPI" : "Paid via Bank Transfer"}
+          </span>
+          <small className="d-block text-secondary fs-8 mt-0.5">UPI/{100000 + idx}/OK</small>
+        </div>
+      ),
+    };
+  });
 
   return (
     <div>

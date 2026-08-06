@@ -63,6 +63,7 @@ CREATE TABLE `driver` (
   `user_id` int NOT NULL,
   `license_no` varchar(25) NOT NULL,
   `status` enum('verified','unverified') DEFAULT 'unverified',
+  `license_pdf_url` longtext DEFAULT NULL,
   PRIMARY KEY (`driver_id`),
   KEY `fk_driver_user` (`user_id`),
   CONSTRAINT `fk_driver_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`)
@@ -136,6 +137,7 @@ CREATE TABLE `ride` (
   `source` varchar(255) NOT NULL,
   `destination` varchar(255) NOT NULL,
   `status` tinyint DEFAULT '2' COMMENT '1=completed, 2=inprogress',
+  `fare` decimal(10,2) DEFAULT '250.00',
   PRIMARY KEY (`ride_id`),
   KEY `fk_ride_user` (`user_id`),
   KEY `fk_ride_vehicle` (`vehicle_id`),

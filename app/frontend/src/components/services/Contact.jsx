@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import SmartRideAIChat from "./SmartRideAIChat";
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -457,7 +458,7 @@ export default function Contact() {
         </div>
       </section>
 
-      {/* SmartRide AI Assistant */}
+      {/* SmartRide AI Assistant — powered by Google Gemini via Spring AI */}
 
       <section
         className="py-5"
@@ -468,125 +469,7 @@ export default function Contact() {
         <div className="container">
           <div className="row justify-content-center">
             <div className="col-lg-8">
-              <div
-                className="card border-0 shadow-lg"
-                style={{
-                  borderRadius: "20px",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Chat Header */}
-
-                <div
-                  className="p-3 d-flex align-items-center"
-                  style={{
-                    background: "#FF6B00",
-                    color: "#fff",
-                  }}
-                >
-                  <div
-                    className="rounded-circle bg-white d-flex justify-content-center align-items-center me-3"
-                    style={{
-                      width: "55px",
-                      height: "55px",
-                    }}
-                  >
-                    <i
-                      className="bi bi-robot"
-                      style={{
-                        fontSize: "28px",
-                        color: "#FF6B00",
-                      }}
-                    ></i>
-                  </div>
-
-                  <div>
-                    <h5
-                      className="mb-0"
-                      style={{
-                        color: "#fff",
-                      }}
-                    >
-                      SmartRide AI Assistant
-                    </h5>
-
-                    <small>Powered by Python AI (Coming Soon)</small>
-                  </div>
-                </div>
-
-                {/* Chat Body */}
-
-                <div
-                  className="p-4"
-                  style={{
-                    background: "#ffffff",
-                  }}
-                >
-                  <div
-                    className="mb-4"
-                    style={{
-                      background: "#FFF4E8",
-                      padding: "18px",
-                      borderRadius: "15px",
-                    }}
-                  >
-                    <strong style={{ color: "#FF6B00" }}>
-                      🤖 SmartRide AI
-                    </strong>
-
-                    <p className="mt-2 mb-2 text-muted">Hello 👋</p>
-
-                    <p className="mb-2 text-muted">
-                      I'm your SmartRide Virtual Assistant.
-                    </p>
-
-                    <p className="text-muted">
-                      I'm currently under development and will soon help you
-                      with:
-                    </p>
-
-                    <ul className="mb-0">
-                      <li>Ride Booking</li>
-
-                      <li>Fare Estimation</li>
-
-                      <li>Driver Support</li>
-
-                      <li>Ride Tracking</li>
-
-                      <li>Complaint Registration</li>
-
-                      <li>Lost & Found</li>
-
-                      <li>Emergency Assistance</li>
-                    </ul>
-                  </div>
-
-                  <div className="input-group">
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Ask SmartRide AI... (Coming Soon)"
-                      disabled
-                    />
-
-                    <button className="btn btn-secondary" disabled>
-                      <i className="bi bi-send-fill"></i>
-                    </button>
-                  </div>
-
-                  <div className="text-center mt-3">
-                    <small
-                      style={{
-                        color: "#6c757d",
-                      }}
-                    >
-                      🚀 Python AI Chatbot integration will be available in a
-                      future update.
-                    </small>
-                  </div>
-                </div>
-              </div>
+              <SmartRideAIChat />
             </div>
           </div>
         </div>

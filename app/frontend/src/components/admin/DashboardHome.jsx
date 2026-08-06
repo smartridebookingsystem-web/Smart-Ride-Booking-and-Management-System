@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { authApi } from "../services/api";
 
 export default function DashboardHome({
   totalRevenue,
@@ -10,26 +11,24 @@ export default function DashboardHome({
   drivers = [],
   payments = [],
 }) {
-  const [driverCount, setDriverCount] = useState(totalDriversCount ?? 0);
+  const propDriverCount = drivers?.length || (Array.isArray(users) ? users.filter(u => String(u.role).toUpperCase() === "DRIVER" || u.roleId === 2).length : 0) || totalDriversCount || 0;
+  const [driverCount, setDriverCount] = useState(propDriverCount);
 
   useEffect(() => {
     let isMounted = true;
     const fetchDriverCount = async () => {
       try {
-        const apiGatewayUrl = import.meta.env.VITE_API_URL || "http://localhost:8088";
-        const response = await fetch(`${apiGatewayUrl}/api/users/all`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch users. HTTP Status: ${response.status}`);
-        }
-        const users = await response.json();
-        const drivers = Array.isArray(users) ? users.filter(u => u.role === "DRIVER" || u.roleId === 2) : [];
-        if (isMounted) {
-          setDriverCount(drivers.length || totalDriversCount || 5);
+        const userList = await authApi.getAllUsers();
+        if (Array.isArray(userList)) {
+          const driverList = userList.filter(u => String(u.role).toUpperCase() === "DRIVER" || u.roleId === 2);
+          if (isMounted) {
+            setDriverCount(driverList.length || propDriverCount);
+          }
         }
       } catch (err) {
-        console.error("[DashboardHome] Error fetching drivers:", err);
+        // Fallback silently to prop driver count without unauthenticated fetch errors
         if (isMounted) {
-          setDriverCount(totalDriversCount || 5);
+          setDriverCount(propDriverCount);
         }
       }
     };
@@ -38,7 +37,7 @@ export default function DashboardHome({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [drivers, users, totalDriversCount]);
 
   return (
     <div>

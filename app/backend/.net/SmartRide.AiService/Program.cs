@@ -3,6 +3,9 @@ using SmartRide.AiService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Server Port to 8094
+builder.WebHost.UseUrls("http://0.0.0.0:8094");
+
 // Add Services to Container
 builder.Services.AddControllers();
 

@@ -57,6 +57,24 @@ const apiFetch = async (
       ? endpoint
       : `${API_BASE_URL}${endpoint}`;
 
+  const token =
+    localStorage.getItem("jwtToken") ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("authToken");
+
+  const headers = {
+    ...options.headers,
+  };
+
+  if (token && !headers["Authorization"] && !headers["authorization"]) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const fetchOptions = {
+    ...options,
+    headers,
+  };
+
   let payload = null;
 
   if (options.body) {
@@ -76,7 +94,7 @@ const apiFetch = async (
   try {
     const response = await fetch(
       url,
-      options
+      fetchOptions
     );
 
     const contentType =
@@ -237,10 +255,10 @@ const apiFetch = async (
 export const authApi = {
 
   /*
-   * Login
+   * Login via Mobile Number
    */
   login: async (
-    emailOrUsername,
+    phone,
     password
   ) => {
 
@@ -255,7 +273,8 @@ export const authApi = {
         },
 
         body: JSON.stringify({
-          emailOrUsername,
+          phone: phone,
+          emailOrUsername: phone,
           password,
         }),
       }
@@ -682,14 +701,20 @@ export const complaintApi = {
       if (Array.isArray(res)) return res;
       if (Array.isArray(res?.data)) return res.data;
     } catch (e) {
-      console.warn("[Complaint API] Gateway fetch notice, fallback to 8081:", e);
+      console.warn("[Complaint API] Primary endpoint notice, attempting fallback:", e);
     }
+
+    try {
+      const res = await apiFetch("/api/complaints/all");
+      if (Array.isArray(res)) return res;
+      if (Array.isArray(res?.data)) return res.data;
+    } catch (e) { }
 
     try {
       const direct = await fetch("http://localhost:8081/api/complaints").then((r) => r.json());
       if (Array.isArray(direct)) return direct;
       if (Array.isArray(direct?.data)) return direct.data;
-    } catch (e) {}
+    } catch (e) { }
 
     return [];
   },
@@ -790,7 +815,7 @@ export const rideApi = {
         if (Array.isArray(data)) return data;
         if (Array.isArray(data?.data)) return data.data;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return [];
   },
@@ -830,14 +855,14 @@ export const rideApi = {
         const data = await directResp.json();
         if (Array.isArray(data)) return data;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       const allRides = await rideApi.getAllRides();
       if (Array.isArray(allRides)) {
         return allRides.filter((r) => String(r.userId || r.user_id) === String(userId));
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return [];
   },
@@ -963,6 +988,11 @@ export const rideApi = {
 
       destination:
         rideData.destination.trim(),
+
+      fare:
+        rideData.fare !== undefined && rideData.fare !== null
+          ? Number(rideData.fare)
+          : undefined,
     };
 
     console.log(
@@ -1076,7 +1106,7 @@ export const rideApi = {
         headers: { "Content-Type": "application/json" },
       });
       if (directResp.ok) return await directResp.json();
-    } catch (e) {}
+    } catch (e) { }
 
     return { status: 2 };
   },
@@ -1123,7 +1153,7 @@ export const rideApi = {
         headers: { "Content-Type": "application/json" },
       });
       if (directResp.ok) return await directResp.json();
-    } catch (e) {}
+    } catch (e) { }
 
     return { status: 1 };
   },
@@ -1150,103 +1180,20 @@ export const rideApi = {
   },
 
   /*
-   * Helper to compute dynamic ride fare from vehicle type & distance,
-   * or lookup stored fare from booking search session.
+   * Helper to return stored database fare directly from ride object.
    */
   calculateRideFare: (ride) => {
-    if (!ride) return 106;
+    if (!ride) return 250;
+    if (typeof ride === "number" || typeof ride === "string") return Number(ride) || 250;
 
-    let numericId = null;
-    if (typeof ride === "number" || typeof ride === "string") {
-      numericId = String(ride)
-        .replace(/^SR1000/, "")
-        .replace(/^SR100/, "")
-        .replace(/^SR10/, "")
-        .replace(/^SR1/, "")
-        .replace(/^SR/, "")
-        .replace(/^RIDE-/, "");
-    } else if (typeof ride === "object") {
-      const rawId = ride.rideId || ride.id || ride.ride_id;
-      if (rawId) {
-        numericId = String(rawId)
-          .replace(/^SR1000/, "")
-          .replace(/^SR100/, "")
-          .replace(/^SR10/, "")
-          .replace(/^SR1/, "")
-          .replace(/^SR/, "")
-          .replace(/^RIDE-/, "");
+    if (typeof ride === "object") {
+      const f = ride.fare ?? ride.totalFare ?? ride.total_fare ?? ride.net_amount;
+      if (f !== undefined && f !== null && Number(f) > 0) {
+        return Math.round(Number(f));
       }
     }
 
-    // 1. Direct fare fields on object
-    if (typeof ride === "object") {
-      if (ride.fare && Number(ride.fare) > 0) return Math.round(Number(ride.fare));
-      if (ride.totalFare && Number(ride.totalFare) > 0) return Math.round(Number(ride.totalFare));
-      if (ride.total_fare && Number(ride.total_fare) > 0) return Math.round(Number(ride.total_fare));
-      if (ride.net_amount && Number(ride.net_amount) > 0) return Math.round(Number(ride.net_amount));
-    }
-
-    // 2. Check stored fare in localStorage & sessionStorage across key patterns
-    if (numericId) {
-      const keys = [`fare_${numericId}`, `fare_SR${1000 + Number(numericId)}`, `fare_RIDE-${numericId}`];
-      for (const k of keys) {
-        const val = localStorage.getItem(k) || sessionStorage.getItem(k);
-        if (val && Number(val) > 0) {
-          return Math.round(Number(val));
-        }
-      }
-    }
-
-    // 3. Database Vehicle Schema Rates:
-    // Vehicle 2 = Hatchback (Base 50, 12/km)
-    // Vehicle 1, 4 = SUV (Base 120, 22/km)
-    // Vehicle 3, 5 = Sedan (Base 80, 16/km)
-    let vId = 2;
-    let vType = "";
-    if (typeof ride === "object") {
-      vId = Number(ride.vehicleId || ride.vehicle_id || 2);
-      vType = String(ride.vehicleType || ride.vehicle_type || "").toLowerCase();
-    }
-
-    let base = 50;
-    let perKm = 12;
-
-    if (vType.includes("suv") || vId === 1 || vId === 4) {
-      base = 120;
-      perKm = 22;
-    } else if (vType.includes("sedan") || vId === 3 || vId === 5) {
-      base = 80;
-      perKm = 16;
-    } else {
-      // Hatchback (Vehicle 2)
-      base = 50;
-      perKm = 12;
-    }
-
-    let distKm = 4.5;
-    if (typeof ride === "object") {
-      const src = String(ride.source || ride.pickup || "").toLowerCase().trim();
-      const dst = String(ride.destination || ride.dropLocation || ride.drop || "").toLowerCase().trim();
-      const combined = src + dst;
-      if (combined) {
-        let hash = 0;
-        for (let i = 0; i < combined.length; i++) {
-          hash = (hash << 5) - hash + combined.charCodeAt(i);
-          hash |= 0;
-        }
-        const posHash = Math.abs(hash);
-        distKm = Number((2.2 + (posHash % 143) / 10).toFixed(1));
-      }
-    }
-
-    const calculatedFare = Math.round(base + distKm * perKm);
-
-    if (numericId) {
-      localStorage.setItem(`fare_${numericId}`, calculatedFare);
-      sessionStorage.setItem(`fare_${numericId}`, calculatedFare);
-    }
-
-    return calculatedFare;
+    return 250;
   },
 
 

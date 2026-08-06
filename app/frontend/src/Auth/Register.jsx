@@ -51,17 +51,179 @@ const Register = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
+  /* ---------------- Client-Side Validation Rules ---------------- */
+
+  const validateField = (name, value, allData = formData) => {
+    let error = "";
+
+    switch (name) {
+      case "username":
+        if (!value || !value.trim()) {
+          error = "Username is required.";
+        } else if (value.trim().length < 3) {
+          error = "Username must be at least 3 characters.";
+        } else if (value.trim().length > 20) {
+          error = "Username cannot exceed 20 characters.";
+        } else if (!/^[a-zA-Z0-9_]+$/.test(value.trim())) {
+          error = "Username can only contain letters, numbers, and underscores.";
+        }
+        break;
+
+      case "email":
+        if (value && value.trim()) {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+            error = "Please enter a valid email address (e.g. user@example.com).";
+          }
+        }
+        break;
+
+      case "password":
+        if (!value) {
+          error = "Password is required.";
+        } else if (value.length < 6) {
+          error = "Password must be at least 6 characters long.";
+        }
+        break;
+
+      case "phone":
+        const cleanPhone = value ? value.replace(/[^0-9]/g, "") : "";
+        if (!cleanPhone) {
+          error = "Mobile number is required.";
+        } else if (cleanPhone.length !== 10) {
+          error = "Mobile number must be exactly 10 digits.";
+        } else if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+          error = "Mobile number must start with 6, 7, 8, or 9.";
+        }
+        break;
+
+      case "dob":
+        if (!value) {
+          error = "Date of Birth is required.";
+        } else {
+          const dobDate = new Date(value);
+          const today = new Date();
+          let age = today.getFullYear() - dobDate.getFullYear();
+          const monthDiff = today.getMonth() - dobDate.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) {
+            age--;
+          }
+          if (dobDate > today) {
+            error = "Date of birth cannot be in the future.";
+          } else if (age < 18) {
+            error = "You must be at least 18 years old to register.";
+          }
+        }
+        break;
+
+      case "gender":
+        if (!value) {
+          error = "Please select your gender.";
+        }
+        break;
+
+      case "address":
+        if (!value || !value.trim()) {
+          error = "Address is required.";
+        } else if (value.trim().length < 10) {
+          error = "Address must be at least 10 characters long.";
+        }
+        break;
+
+      case "emergencyContact":
+        const cleanEm = value ? value.replace(/[^0-9]/g, "") : "";
+        const userPhone = allData.phone ? allData.phone.replace(/[^0-9]/g, "") : "";
+        if (!cleanEm) {
+          error = "Emergency contact number is required.";
+        } else if (cleanEm.length !== 10) {
+          error = "Emergency contact must be a 10-digit mobile number.";
+        } else if (!/^[6-9]\d{9}$/.test(cleanEm)) {
+          error = "Emergency contact must start with 6, 7, 8, or 9.";
+        } else if (userPhone && cleanEm === userPhone) {
+          error = "Emergency contact must be different from your mobile number.";
+        }
+        break;
+
+      case "licenseNumber":
+        if (allData.role === "driver") {
+          if (!value || !value.trim()) {
+            error = "Driving License Number is required for Drivers.";
+          } else if (value.trim().length < 6) {
+            error = "Please enter a valid Driving License Number (min 6 characters).";
+          }
+        }
+        break;
+
+      case "vehicleDetails":
+        if (allData.role === "driver") {
+          if (!value || !value.trim()) {
+            error = "Vehicle details are required for Drivers.";
+          } else if (value.trim().length < 5) {
+            error = "Please enter complete vehicle details (e.g. Swift Dzire MH12AB1234).";
+          }
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    return error;
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    const fieldsToValidate = ["username", "email", "password", "phone", "dob", "gender", "address", "emergencyContact"];
+    if (formData.role === "driver") {
+      fieldsToValidate.push("licenseNumber", "vehicleDetails");
+    }
+
+    fieldsToValidate.forEach((field) => {
+      const err = validateField(field, formData[field], formData);
+      if (err) newErrors[field] = err;
+    });
+
+    if (!formData.profilePhoto) {
+      newErrors.profilePhoto = "Profile photo is required.";
+    }
+
+    if (formData.role === "driver" && !formData.licensePdf) {
+      newErrors.licensePdf = "Driving License document is required for Drivers.";
+    }
+
+    // Mark all as touched
+    const allTouched = {};
+    fieldsToValidate.forEach((f) => (allTouched[f] = true));
+    allTouched.profilePhoto = true;
+    if (formData.role === "driver") allTouched.licensePdf = true;
+
+    setTouched(allTouched);
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0;
+  };
 
   /* ---------------- Handle Input ---------------- */
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setFormData({
+    const updatedFormData = {
       ...formData,
       [name]: value,
-    });
+    };
+
+    setFormData(updatedFormData);
+
+    if (touched[name]) {
+      const fieldError = validateField(name, value, updatedFormData);
+      setErrors((prev) => ({
+        ...prev,
+        [name]: fieldError,
+      }));
+    }
   };
 
   /* ---------------- Handle Files ---------------- */
@@ -101,17 +263,29 @@ const Register = () => {
   /* ---------------- Field Availability Blur Check ---------------- */
 
   const handleBlurField = async (field) => {
-    if (field === "email" && formData.email) {
-      const avail = await authApi.checkAvailability({ email: formData.email.trim() });
-      if (avail && avail.emailExists) {
-        alert(`⚠️ Email "${formData.email}" is already registered! Please enter a different email address or login.`);
-        setFormData((prev) => ({ ...prev, email: "" }));
-      }
-    } else if (field === "username" && formData.username) {
-      const avail = await authApi.checkAvailability({ username: formData.username.trim() });
-      if (avail && avail.usernameExists) {
-        alert(`⚠️ Username "${formData.username}" is already taken! Please choose a different username.`);
-        setFormData((prev) => ({ ...prev, username: "" }));
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateField(field, formData[field], formData);
+    setErrors((prev) => ({ ...prev, [field]: err }));
+
+    if (!err) {
+      if (field === "email" && formData.email) {
+        const avail = await authApi.checkAvailability({ email: formData.email.trim() });
+        if (avail && avail.emailExists) {
+          setErrors((prev) => ({ ...prev, email: `Email "${formData.email}" is already registered!` }));
+        }
+      } else if (field === "username" && formData.username) {
+        const avail = await authApi.checkAvailability({ username: formData.username.trim() });
+        if (avail && avail.usernameExists) {
+          setErrors((prev) => ({ ...prev, username: `Username "${formData.username}" is already taken!` }));
+        }
+      } else if (field === "phone" && formData.phone) {
+        const cleanP = formData.phone.replace(/[^0-9]/g, "");
+        if (cleanP.length === 10) {
+          const avail = await authApi.checkAvailability({ phone: cleanP });
+          if (avail && avail.phoneExists) {
+            setErrors((prev) => ({ ...prev, phone: `Mobile number +91${cleanP} is already registered!` }));
+          }
+        }
       }
     }
   };
@@ -119,24 +293,40 @@ const Register = () => {
   /* ---------------- Send OTP via Backend (With Duplicate Check) ---------------- */
 
   const handleSendOtp = async () => {
+    setTouched((prev) => ({ ...prev, phone: true }));
+    const phoneErr = validateField("phone", formData.phone, formData);
+    if (phoneErr) {
+      setErrors((prev) => ({ ...prev, phone: phoneErr }));
+      setOtpState((prev) => ({ ...prev, error: phoneErr, message: "" }));
+      return;
+    }
+
     const cleanPhone = formData.phone ? formData.phone.replace(/[^0-9]/g, "") : "";
     if (!cleanPhone || cleanPhone.length !== 10) {
       setOtpState((prev) => ({ ...prev, error: "Please enter a valid 10-digit mobile number.", message: "" }));
       return;
     }
 
-    setOtpState((prev) => ({ ...prev, error: "", message: "Checking mobile number availability..." }));
+    setOtpState((prev) => ({ ...prev, error: "", message: "Checking if mobile number is already registered..." }));
 
     try {
       // 1. Check if phone is already registered BEFORE sending OTP
       const avail = await authApi.checkAvailability({ phone: cleanPhone });
       if (avail && avail.phoneExists) {
-        alert(`⚠️ Mobile number +91${cleanPhone} is already registered! Please enter a different number or login.`);
-        setFormData((prev) => ({ ...prev, phone: "" }));
-        setOtpState({ code: "", inputCode: "", isSent: false, isVerified: false, message: "", error: "" });
-        return;
+        const errMsg = `⚠️ Mobile number +91${cleanPhone} is already registered! Please login instead.`;
+        setErrors((prev) => ({ ...prev, phone: errMsg }));
+        setOtpState({
+          code: "",
+          inputCode: "",
+          isSent: false,
+          isVerified: false,
+          message: "",
+          error: errMsg,
+        });
+        return; // STOP! Do NOT send OTP if user is already registered!
       }
 
+      // 2. Mobile number is available -> Send OTP
       setOtpState((prev) => ({ ...prev, message: "Sending OTP..." }));
       const result = await authApi.sendOtp(cleanPhone);
       console.log("[OTP Service] Result:", result);
@@ -152,8 +342,7 @@ const Register = () => {
     } catch (err) {
       console.error("[OTP Service] Send OTP error:", err);
       if (err.message && err.message.toLowerCase().includes("already registered")) {
-        alert(`⚠️ Mobile number +91${cleanPhone} is already registered! Please enter a different number or login.`);
-        setFormData((prev) => ({ ...prev, phone: "" }));
+        setErrors((prev) => ({ ...prev, phone: `Mobile number +91${cleanPhone} is already registered!` }));
       }
       setOtpState({
         code: "",
@@ -199,12 +388,16 @@ const Register = () => {
   /* ---------------- Verify License (With Duplicate Check) ---------------- */
 
   const handleVerifyLicense = async () => {
-    if (!formData.licenseNumber) {
-      setLicenseStatus({ verified: false, message: "Please enter your Driving License Number first." });
+    setTouched((prev) => ({ ...prev, licenseNumber: true, licensePdf: true }));
+    const licErr = validateField("licenseNumber", formData.licenseNumber, formData);
+    if (licErr) {
+      setErrors((prev) => ({ ...prev, licenseNumber: licErr }));
+      setLicenseStatus({ verified: false, message: licErr });
       return;
     }
 
     if (!formData.licensePdf) {
+      setErrors((prev) => ({ ...prev, licensePdf: "Please upload your Driving License Document (Image/PDF)." }));
       setLicenseStatus({ verified: false, message: "Please upload your Driving License Document (Image/PDF) for manual verification." });
       return;
     }
@@ -212,9 +405,8 @@ const Register = () => {
     try {
       const avail = await authApi.checkAvailability({ licenseNo: formData.licenseNumber.trim() });
       if (avail && avail.licenseExists) {
-        alert(`⚠️ Driving License Number "${formData.licenseNumber}" is already registered with another driver account!`);
-        setFormData((prev) => ({ ...prev, licenseNumber: "", licensePdf: null }));
-        setLicenseStatus({ verified: false, message: "" });
+        setErrors((prev) => ({ ...prev, licenseNumber: `License Number "${formData.licenseNumber}" is already registered!` }));
+        setLicenseStatus({ verified: false, message: `Driving License Number "${formData.licenseNumber}" is already registered with another driver account!` });
         return;
       }
 
@@ -234,6 +426,12 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const isValid = validateForm();
+    if (!isValid) {
+      alert("Please correct the validation errors in the form before submitting.");
+      return;
+    }
 
     if (!otpState.isVerified) {
       alert("Please verify your mobile number via OTP first.");
@@ -382,11 +580,17 @@ const Register = () => {
                       id="profilePhoto"
                       name="profilePhoto"
                       type="file"
-                      className="form-control"
+                      className={`form-control ${touched.profilePhoto && errors.profilePhoto ? "is-invalid" : touched.profilePhoto && !errors.profilePhoto ? "is-valid" : ""}`}
                       accept="image/png,image/jpeg"
                       onChange={handleFileChange}
                       required
                     />
+                    {touched.profilePhoto && errors.profilePhoto && (
+                      <div className="invalid-feedback d-block mt-1">
+                        <i className="bi bi-exclamation-circle me-1"></i>
+                        {errors.profilePhoto}
+                      </div>
+                    )}
                   </div>
 
                   {/* User Details */}
@@ -399,7 +603,7 @@ const Register = () => {
                         id="reg_username"
                         type="text"
                         autoComplete="username"
-                        className="form-control"
+                        className={`form-control ${touched.username && errors.username ? "is-invalid" : touched.username && !errors.username ? "is-valid" : ""}`}
                         name="username"
                         value={formData.username}
                         onChange={handleChange}
@@ -407,6 +611,12 @@ const Register = () => {
                         placeholder="Enter Username"
                         required
                       />
+                      {touched.username && errors.username && (
+                        <div className="invalid-feedback d-block mt-1">
+                          <i className="bi bi-exclamation-circle me-1"></i>
+                          {errors.username}
+                        </div>
+                      )}
                     </div>
 
                     <div className="col-md-6">
@@ -418,13 +628,19 @@ const Register = () => {
                         id="reg_email"
                         type="email"
                         autoComplete="email"
-                        className="form-control"
+                        className={`form-control ${touched.email && errors.email ? "is-invalid" : touched.email && !errors.email && formData.email ? "is-valid" : ""}`}
                         name="email"
                         value={formData.email}
                         onChange={handleChange}
                         onBlur={() => handleBlurField("email")}
                         placeholder="Enter Email (Optional)"
                       />
+                      {touched.email && errors.email && (
+                        <div className="invalid-feedback d-block mt-1">
+                          <i className="bi bi-exclamation-circle me-1"></i>
+                          {errors.email}
+                        </div>
+                      )}
                     </div>
 
                     <div className="col-md-6">
@@ -434,13 +650,20 @@ const Register = () => {
                         id="reg_password"
                         type="password"
                         autoComplete="new-password"
-                        className="form-control"
+                        className={`form-control ${touched.password && errors.password ? "is-invalid" : touched.password && !errors.password ? "is-valid" : ""}`}
                         name="password"
                         value={formData.password}
                         onChange={handleChange}
-                        placeholder="Enter Password"
+                        onBlur={() => handleBlurField("password")}
+                        placeholder="Enter Password (min 6 chars)"
                         required
                       />
+                      {touched.password && errors.password && (
+                        <div className="invalid-feedback d-block mt-1">
+                          <i className="bi bi-exclamation-circle me-1"></i>
+                          {errors.password}
+                        </div>
+                      )}
                     </div>
 
                     {/* Mobile Number */}
@@ -459,11 +682,12 @@ const Register = () => {
                           id="reg_phone"
                           type="text"
                           autoComplete="tel"
-                          className="form-control"
+                          className={`form-control ${touched.phone && errors.phone ? "is-invalid" : touched.phone && !errors.phone ? "is-valid" : ""}`}
                           name="phone"
                           value={formData.phone}
                           onChange={handleChange}
-                          placeholder="Enter Mobile Number"
+                          onBlur={() => handleBlurField("phone")}
+                          placeholder="10-digit mobile number"
                           maxLength={10}
                           required
                         />
@@ -490,6 +714,12 @@ const Register = () => {
                           </span>
                         )}
                       </div>
+                      {touched.phone && errors.phone && (
+                        <div className="invalid-feedback d-block mt-1">
+                          <i className="bi bi-exclamation-circle me-1"></i>
+                          {errors.phone}
+                        </div>
+                      )}
                     </div>
 
                     {/* OTP Code Entry Card (Renders when OTP is sent & not yet verified) */}
@@ -560,12 +790,19 @@ const Register = () => {
                         id="reg_dob"
                         type="date"
                         autoComplete="bday"
-                        className="form-control"
+                        className={`form-control ${touched.dob && errors.dob ? "is-invalid" : touched.dob && !errors.dob ? "is-valid" : ""}`}
                         name="dob"
                         value={formData.dob}
                         onChange={handleChange}
+                        onBlur={() => handleBlurField("dob")}
                         required
                       />
+                      {touched.dob && errors.dob && (
+                        <div className="invalid-feedback d-block mt-1">
+                          <i className="bi bi-exclamation-circle me-1"></i>
+                          {errors.dob}
+                        </div>
+                      )}
                     </div>
 
                     {/* Gender */}
@@ -575,10 +812,11 @@ const Register = () => {
 
                       <select
                         id="reg_gender"
-                        className="form-select"
+                        className={`form-select ${touched.gender && errors.gender ? "is-invalid" : touched.gender && !errors.gender ? "is-valid" : ""}`}
                         name="gender"
                         value={formData.gender}
                         onChange={handleChange}
+                        onBlur={() => handleBlurField("gender")}
                         required
                       >
                         <option value="">Select Gender</option>
@@ -589,6 +827,12 @@ const Register = () => {
 
                         <option value="Other">Other</option>
                       </select>
+                      {touched.gender && errors.gender && (
+                        <div className="invalid-feedback d-block mt-1">
+                          <i className="bi bi-exclamation-circle me-1"></i>
+                          {errors.gender}
+                        </div>
+                      )}
                     </div>
 
                     {/* Address */}
@@ -598,18 +842,25 @@ const Register = () => {
 
                       <textarea
                         id="reg_address"
-                        className="form-control"
+                        className={`form-control ${touched.address && errors.address ? "is-invalid" : touched.address && !errors.address ? "is-valid" : ""}`}
                         rows="3"
                         name="address"
                         value={formData.address}
                         onChange={handleChange}
-                        placeholder="Enter Full Address"
+                        onBlur={() => handleBlurField("address")}
+                        placeholder="Enter Full Address (min 10 characters)"
                         style={{
                           height: "110px",
                           resize: "none",
                         }}
                         required
                       ></textarea>
+                      {touched.address && errors.address && (
+                        <div className="invalid-feedback d-block mt-1">
+                          <i className="bi bi-exclamation-circle me-1"></i>
+                          {errors.address}
+                        </div>
+                      )}
                     </div>
 
                     {/* Emergency Contact */}
@@ -622,14 +873,21 @@ const Register = () => {
                       <input
                         id="reg_emergencyContact"
                         type="text"
-                        className="form-control"
+                        className={`form-control ${touched.emergencyContact && errors.emergencyContact ? "is-invalid" : touched.emergencyContact && !errors.emergencyContact ? "is-valid" : ""}`}
                         name="emergencyContact"
                         value={formData.emergencyContact}
                         onChange={handleChange}
+                        onBlur={() => handleBlurField("emergencyContact")}
                         placeholder="Emergency Contact Number"
                         maxLength={10}
                         required
                       />
+                      {touched.emergencyContact && errors.emergencyContact && (
+                        <div className="invalid-feedback d-block mt-1">
+                          <i className="bi bi-exclamation-circle me-1"></i>
+                          {errors.emergencyContact}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -665,13 +923,20 @@ const Register = () => {
                           <input
                             id="reg_licenseNumber"
                             type="text"
-                            className="form-control"
+                            className={`form-control ${touched.licenseNumber && errors.licenseNumber ? "is-invalid" : touched.licenseNumber && !errors.licenseNumber ? "is-valid" : ""}`}
                             name="licenseNumber"
                             value={formData.licenseNumber}
                             onChange={handleChange}
-                            placeholder="Enter License Number"
+                            onBlur={() => handleBlurField("licenseNumber")}
+                            placeholder="Enter License Number (e.g. MH1220201234567)"
                             required={formData.role === "driver"}
                           />
+                          {touched.licenseNumber && errors.licenseNumber && (
+                            <div className="invalid-feedback d-block mt-1">
+                              <i className="bi bi-exclamation-circle me-1"></i>
+                              {errors.licenseNumber}
+                            </div>
+                          )}
                         </div>
 
                         {/* Vehicle Details */}
@@ -683,13 +948,20 @@ const Register = () => {
 
                           <input
                             type="text"
-                            className="form-control"
+                            className={`form-control ${touched.vehicleDetails && errors.vehicleDetails ? "is-invalid" : touched.vehicleDetails && !errors.vehicleDetails ? "is-valid" : ""}`}
                             name="vehicleDetails"
                             value={formData.vehicleDetails}
                             onChange={handleChange}
+                            onBlur={() => handleBlurField("vehicleDetails")}
                             placeholder="Example: Swift Dzire MH12AB1234"
                             required={formData.role === "driver"}
                           />
+                          {touched.vehicleDetails && errors.vehicleDetails && (
+                            <div className="invalid-feedback d-block mt-1">
+                              <i className="bi bi-exclamation-circle me-1"></i>
+                              {errors.vehicleDetails}
+                            </div>
+                          )}
                         </div>
 
                         {/* Upload License */}
@@ -703,11 +975,17 @@ const Register = () => {
                             id="reg_licensePdf"
                             name="licensePdf"
                             type="file"
-                            className="form-control"
+                            className={`form-control ${touched.licensePdf && errors.licensePdf ? "is-invalid" : touched.licensePdf && !errors.licensePdf ? "is-valid" : ""}`}
                             accept="image/*,.pdf"
                             onChange={handleLicensePdfChange}
                             required={formData.role === "driver"}
                           />
+                          {touched.licensePdf && errors.licensePdf && (
+                            <div className="invalid-feedback d-block mt-1">
+                              <i className="bi bi-exclamation-circle me-1"></i>
+                              {errors.licensePdf}
+                            </div>
+                          )}
                         </div>
 
                         {/* Verify Button */}

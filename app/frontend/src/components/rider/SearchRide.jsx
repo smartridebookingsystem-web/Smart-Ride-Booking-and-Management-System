@@ -312,6 +312,8 @@ export default function SearchRide() {
 
       destination:
         rideResult.destination.trim(),
+
+      fare: Number(rideResult.fare),
     };
 
     console.log(
@@ -512,7 +514,7 @@ export default function SearchRide() {
             Maharashtra Ride Search & Booking
           </h4>
 
-          <p className="text-muted small mb-0">
+          <p className="text-primary small mb-0">
             Type a location with autocomplete
             or select points directly on the map.
           </p>
@@ -536,19 +538,19 @@ export default function SearchRide() {
 
       {bookingSuccess && (
         <div
-          className="alert alert-success shadow-sm rounded-4 mb-4"
+          className="alert alert-success shadow-sm  rounded-4 mb-4 text-dark"
           role="alert"
         >
           <div className="d-flex justify-content-between align-items-start">
 
             <div>
-              <h6 className="fw-bold mb-2">
+              <h6 className="fw-bold text-dark mb-2">
                 <i className="bi bi-check-circle-fill me-2"></i>
 
                 Ride Request Created
               </h6>
 
-              <p className="mb-1">
+              <p className="mb-1 text-success fw-bold">
                 {bookingSuccess.message}
               </p>
 
@@ -565,7 +567,7 @@ export default function SearchRide() {
                 <div className="mt-2 p-2 px-3 bg-white rounded-3 border border-success-subtle d-inline-flex align-items-center gap-2.5 shadow-sm">
                   <i className="bi bi-shield-lock-fill text-warning fs-5"></i>
                   <div>
-                    <span className="text-muted d-block" style={{ fontSize: "0.75rem", fontWeight: 600 }}>
+                    <span className="text-primary d-block" style={{ fontSize: "0.75rem", fontWeight: 600 }}>
                       RIDER TRIP OTP (SHARE WITH DRIVER TO START TRIP)
                     </span>
                     <strong className="fs-5 text-dark font-monospace" style={{ letterSpacing: "3px" }}>
@@ -658,7 +660,7 @@ export default function SearchRide() {
                 }}
               >
 
-                <i className="bi bi-geo-alt text-primary me-1"></i>
+                <i className="bi bi-geo-alt text-dark me-1"></i>
 
                 {hub.name.split(",")[0]}
 
@@ -682,9 +684,9 @@ export default function SearchRide() {
 
             <h5
               className="fw-bold mb-4"
-              style={{ color: "#0F172A" }}
+              style={{ color: "#eff1f6ff" }}
             >
-              <i className="bi bi-sliders text-warning me-2"></i>
+              <i className="bi bi-sliders text-primary me-2"></i>
 
               Trip Details
             </h5>
@@ -698,15 +700,15 @@ export default function SearchRide() {
 
                 <div className="d-flex justify-content-between align-items-center mb-1">
 
-                  <label className="form-label fw-semibold text-muted small mb-0">
+                  <label className="form-label fw-semibold text-white small mb-0">
                     PICKUP LOCATION
                   </label>
 
                   <button
                     type="button"
                     className={`btn btn - sm ${selecting === "pickup"
-                        ? "btn-warning text-white fw-bold"
-                        : "btn-outline-warning text-dark"
+                      ? "btn-warning text-white fw-bold"
+                      : "btn-outline-warning text-white"
                       } py - 0 px - 2`}
                     onClick={() =>
                       setSelecting(
@@ -778,7 +780,7 @@ export default function SearchRide() {
                             {item.name.split(",")[0]}
                           </strong>
 
-                          <span className="text-muted d-block small">
+                          <span className="text-primary d-block small">
                             {item.name}
                           </span>
 
@@ -799,15 +801,15 @@ export default function SearchRide() {
 
                 <div className="d-flex justify-content-between align-items-center mb-1">
 
-                  <label className="form-label fw-semibold text-muted small mb-0">
+                  <label className="form-label fw-semibold text-white small mb-0">
                     DROP DESTINATION
                   </label>
 
                   <button
                     type="button"
                     className={`btn btn - sm ${selecting === "drop"
-                        ? "btn-danger text-white fw-bold"
-                        : "btn-outline-danger"
+                      ? "btn-danger text-white fw-bold"
+                      : "btn-outline-danger"
                       } py - 0 px - 2`}
                     onClick={() =>
                       setSelecting(
@@ -879,7 +881,7 @@ export default function SearchRide() {
                             {item.name.split(",")[0]}
                           </strong>
 
-                          <span className="text-muted d-block small">
+                          <span className="text-primary d-block small">
                             {item.name}
                           </span>
 
@@ -898,7 +900,7 @@ export default function SearchRide() {
 
               <div className="mb-4">
 
-                <label className="form-label fw-semibold text-muted small">
+                <label className="form-label fw-semibold text-primary small">
                   SELECT VEHICLE CATEGORY
                 </label>
 
@@ -1031,21 +1033,21 @@ export default function SearchRide() {
 
                   <div>
 
-                    <span className="text-muted small d-block">
+                    <span className="text-primary small d-block">
                       Vehicle:{" "}
                       <strong>
                         {rideResult.vehicleType}
                       </strong>
                     </span>
 
-                    <span className="text-muted small d-block">
+                    <span className="text-primary small d-block">
                       Vehicle ID:{" "}
                       <strong>
                         {rideResult.vehicleId}
                       </strong>
                     </span>
 
-                    <span className="text-muted small d-block">
+                    <span className="text-primary small d-block">
                       Distance:{" "}
                       <strong>
                         {rideResult.distanceKm} km
@@ -1127,7 +1129,7 @@ export default function SearchRide() {
 
               </h6>
 
-              <small className="text-muted">
+              <small className="text-primary">
                 <i className="bi bi-info-circle me-1"></i>
 
                 Click map to place markers

@@ -3,12 +3,15 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { rideApi } from "../services/api";
+import { getDriverIdFromUser, saveActiveRideMeta } from "../../utils/rideFlow";
 
 export default function RideRequests() {
   const { user } = useSelector((state) => state.auth || {});
+  const navigate = useNavigate();
 
-  const driverId = user?.userId || user?.id || null;
+  const driverId = getDriverIdFromUser(user);
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -191,6 +194,14 @@ export default function RideRequests() {
         updatedRide
       );
 
+      saveActiveRideMeta(ride.rideId, {
+        rideId: ride.rideId,
+        status: 3,
+        source: ride.source,
+        destination: ride.destination,
+        driverId,
+      });
+
       /*
        * Remove the accepted ride from the
        * pending request list immediately.
@@ -205,6 +216,7 @@ export default function RideRequests() {
       alert(
         `Ride #${ride.rideId} accepted successfully.`
       );
+      navigate("/driver/navigation", { state: { rideId: ride.rideId } });
     } catch (err) {
       console.error(
         "[Driver] ❌ Failed to accept ride:",
@@ -398,6 +410,8 @@ export default function RideRequests() {
               acceptingRideId ===
               ride.rideId;
 
+            const fareVal = rideApi.calculateRideFare(ride);
+
             return (
               <div
                 className="col-12 col-lg-6 col-xl-4"
@@ -425,16 +439,21 @@ export default function RideRequests() {
                       </h5>
                     </div>
 
-                    <span className="badge bg-warning text-dark">
-                      {getStatusLabel(
-                        ride.status
-                      )}
-                    </span>
+                    <div className="text-end">
+                      <span className="badge bg-warning text-dark me-2">
+                        {getStatusLabel(
+                          ride.status
+                        )}
+                      </span>
+                      <span className="badge bg-success text-white fw-bold">
+                        ₹{rideApi.calculateRideFare(ride)}
+                      </span>
+                    </div>
 
                   </div>
 
                   {/* CARD BODY */}
-                  <div className="card-body p-4">
+                  <div className="card-body p-4 text-dark bg-light">
 
                     {/* PICKUP */}
                     <div className="d-flex gap-3 mb-4">
@@ -500,25 +519,25 @@ export default function RideRequests() {
                     <div className="row g-2 mb-4">
 
                       <div className="col-6">
-                        <div className="bg-light rounded-3 p-3">
-                          <small className="text-muted d-block">
-                            Rider ID
+                        <div className="bg-white rounded-3 p-3 border shadow-sm">
+                          <small className="text-muted d-block extra-small text-uppercase fw-semibold">
+                            Estimated Fare
                           </small>
 
-                          <strong>
-                            {ride.userId}
+                          <strong className="text-success fs-5 fw-bold">
+                            ₹ {fareVal}
                           </strong>
                         </div>
                       </div>
 
                       <div className="col-6">
-                        <div className="bg-light rounded-3 p-3">
-                          <small className="text-muted d-block">
-                            Vehicle ID
+                        <div className="bg-white rounded-3 p-3 border shadow-sm">
+                          <small className="text-muted d-block extra-small text-uppercase fw-semibold">
+                            Rider ID
                           </small>
 
-                          <strong>
-                            {ride.vehicleId}
+                          <strong className="text-dark fs-6 fw-bold">
+                            #{ride.userId}
                           </strong>
                         </div>
                       </div>

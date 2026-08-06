@@ -59,7 +59,7 @@ export default function Home5() {
               </p>
 
               <div className="d-flex flex-wrap gap-3">
-                <Link to="/book-ride" className="btn btn-primary btn-lg px-4">
+                <Link to="/login" className="btn btn-primary btn-lg px-4">
                   <i className="bi bi-car-front-fill me-2"></i>
                   Book Ride
                 </Link>

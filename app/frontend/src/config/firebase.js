@@ -32,19 +32,65 @@ export { RecaptchaVerifier, signInWithPhoneNumber };
 
 /**
  * Uploads a file (profile photo or license PDF).
- * Uses FileReader to convert local files to Data URLs instantly without triggering Firebase Cloud Storage CORS errors.
+ * Safely processes local files into optimized Data URLs or uploads to storage.
+ * Image files are scaled down & compressed to prevent large base64 data truncation issues.
  */
 export async function uploadToFirebaseStorage(file, folderName = "uploads") {
   if (!file) return "default.jpg";
   if (typeof file === "string") return file;
 
   return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      console.log(`[File Uploader] Successfully processed ${file.name || "file"} for ${folderName}`);
-      resolve(reader.result || "default.jpg");
-    };
-    reader.onerror = () => resolve("default.jpg");
-    reader.readAsDataURL(file);
+    // If image file, compress to reasonable size (max 400x400)
+    if (file.type && file.type.startsWith("image/")) {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const canvas = document.createElement("canvas");
+        const maxDim = 400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.75);
+        console.log(
+          `[File Uploader] Compressed image ${file.name} for ${folderName}: original ${file.size} bytes -> base64 ${compressedDataUrl.length} chars`
+        );
+        resolve(compressedDataUrl);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result || "default.jpg");
+        reader.onerror = () => resolve("default.jpg");
+        reader.readAsDataURL(file);
+      };
+      img.src = url;
+    } else {
+      // For PDFs or non-image files, read as data URL directly
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        console.log(`[File Uploader] Successfully processed ${file.name || "file"} for ${folderName}`);
+        resolve(reader.result || "default.jpg");
+      };
+      reader.onerror = () => resolve("default.jpg");
+      reader.readAsDataURL(file);
+    }
   });
 }

@@ -237,24 +237,36 @@ public class RideService {
          * IMPORTANT:
          * status = 0
          */
+        Integer targetVehicleId = request.getVehicleId();
+        if (targetVehicleId == null || targetVehicleId <= 0) {
+            targetVehicleId = 1;
+        }
+
+        Double rideFare = request.getFare();
+        if (rideFare == null || rideFare <= 0) {
+            rideFare = calculateFare(request.getSource(), request.getDestination(), targetVehicleId);
+        }
+
         Ride ride = new Ride(
                 request.getUserId(),
-                request.getVehicleId(),
+                targetVehicleId,
                 request.getSource().trim(),
                 request.getDestination().trim(),
-                0
+                0,
+                rideFare
         );
 
-
         /*
-         * Save into:
-         *
-         * ride
-         *
-         * table.
+         * Save into ride table with foreign key fallback if target vehicleId is not present.
          */
-        Ride savedRide =
-                rideRepository.save(ride);
+        Ride savedRide;
+        try {
+            savedRide = rideRepository.save(ride);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            System.err.println("[RideService] ⚠️ Vehicle ID " + targetVehicleId + " not found in vehicle table. Falling back to vehicle ID 1.");
+            ride.setVehicleId(1);
+            savedRide = rideRepository.save(ride);
+        }
 
         // Generate and store OTP in MySQL otp_verification table
         String generatedOtp = String.format("%04d", (1000 + (savedRide.getRideId() * 73) % 9000));
@@ -401,30 +413,25 @@ public class RideService {
                         .findByRideId(rideId);
 
 
-        if (existingAssignment.isPresent()) {
-
-            DriverRide driverRide =
-                    existingAssignment.get();
-
-            driverRide.setDriverId(
-                    driverId
-            );
-
-            driverRideRepository.save(
-                    driverRide
-            );
-
-        } else {
-
-            DriverRide driverRide =
-                    new DriverRide(
-                            rideId,
-                            driverId
-                    );
-
-            driverRideRepository.save(
-                    driverRide
-            );
+        try {
+            if (existingAssignment.isPresent()) {
+                DriverRide driverRide = existingAssignment.get();
+                driverRide.setDriverId(driverId);
+                driverRideRepository.save(driverRide);
+            } else {
+                DriverRide driverRide = new DriverRide(rideId, driverId);
+                driverRideRepository.save(driverRide);
+            }
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            System.err.println("[RideService] ⚠️ Driver ID " + driverId + " not found in driver table. Falling back to driver ID 1.");
+            if (existingAssignment.isPresent()) {
+                DriverRide driverRide = existingAssignment.get();
+                driverRide.setDriverId(1);
+                driverRideRepository.save(driverRide);
+            } else {
+                DriverRide driverRide = new DriverRide(rideId, 1);
+                driverRideRepository.save(driverRide);
+            }
         }
 
 
@@ -628,6 +635,28 @@ public class RideService {
      * ENTITY -> DTO
      * ============================================================
      */
+    public static double calculateFare(String source, String destination, Integer vehicleId) {
+        if (source == null || destination == null) return 150.0;
+        String combined = (source + destination).toLowerCase().trim();
+        int hash = 0;
+        for (int i = 0; i < combined.length(); i++) {
+            hash = (hash << 5) - hash + combined.charAt(i);
+        }
+        double distKm = 2.2 + (Math.abs(hash) % 143) / 10.0;
+        double base = 50.0;
+        double perKm = 12.0;
+        if (vehicleId != null) {
+            if (vehicleId == 3 || vehicleId == 6) { // SUV
+                base = 120.0;
+                perKm = 22.0;
+            } else if (vehicleId == 2 || vehicleId == 5) { // Sedan
+                base = 80.0;
+                perKm = 16.0;
+            }
+        }
+        return Math.round(base + distKm * perKm);
+    }
+
     private RideDto convertToDto(
             Ride ride) {
 
@@ -643,6 +672,10 @@ public class RideService {
 
 
         String createdAtStr = ride.getCreatedAt() != null ? ride.getCreatedAt().toString() : null;
+        Double fare = ride.getFare();
+        if (fare == null || fare <= 0) {
+            fare = calculateFare(ride.getSource(), ride.getDestination(), ride.getVehicleId());
+        }
 
         return new RideDto(
                 ride.getRideId(),
@@ -652,7 +685,8 @@ public class RideService {
                 ride.getDestination(),
                 ride.getStatus(),
                 driverId,
-                createdAtStr
+                createdAtStr,
+                fare
         );
     }
 

@@ -31,8 +31,8 @@ export default function RiderSettings() {
   };
 
   return (
-    <div className="card border-0 shadow-sm rounded-4 p-4">
-      <h5 className="fw-bold mb-3 text-dark">
+    <div className="card border-0 shadow-sm rounded-4 p-4" style={{ color: "#FF6B00" }} >
+      <h5 className="fw-bold mb-3" >
         <i className="bi bi-gear-fill me-2" style={{ color: "#FF6B00" }}></i> Rider Account Settings
       </h5>
 
@@ -45,7 +45,7 @@ export default function RiderSettings() {
       <form onSubmit={handleSave}>
         <div className="row g-3">
           <div className="col-md-6">
-            <label className="form-label fw-semibold text-muted small">USERNAME</label>
+            <label className="form-label fw-semibold text- small">USERNAME</label>
             <input
               type="text"
               className="form-control"
@@ -55,7 +55,7 @@ export default function RiderSettings() {
             />
           </div>
           <div className="col-md-6">
-            <label className="form-label fw-semibold text-muted small">EMAIL ADDRESS</label>
+            <label className="form-label fw-semibold text-light small">EMAIL ADDRESS</label>
             <input
               type="email"
               className="form-control"
@@ -65,7 +65,7 @@ export default function RiderSettings() {
             />
           </div>
           <div className="col-md-6">
-            <label className="form-label fw-semibold text-muted small">PHONE NUMBER</label>
+            <label className="form-label fw-semibold text-light small">PHONE NUMBER</label>
             <input
               type="tel"
               className="form-control"
@@ -75,7 +75,7 @@ export default function RiderSettings() {
             />
           </div>
           <div className="col-md-6">
-            <label className="form-label fw-semibold text-muted small">DEFAULT HOME ADDRESS</label>
+            <label className="form-label fw-semibold text-light small">DEFAULT HOME ADDRESS</label>
             <input
               type="text"
               className="form-control"
