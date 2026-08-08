@@ -162,4 +162,31 @@ public class AuthService {
             "username", jwtUtil.extractUsername(token)
         );
     }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void resetPassword(String phone, String newPassword) {
+        if (phone == null || phone.isBlank()) {
+            throw new RuntimeException("Mobile number is required.");
+        }
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new RuntimeException("New password is required.");
+        }
+
+        String cleanPhone = phone.replaceAll("^\\+91", "").replaceAll("[^0-9]", "");
+        Optional<User> userOpt = userRepository.findByPhone(cleanPhone);
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByPhone("+91" + cleanPhone);
+        }
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByUsername(cleanPhone);
+        }
+
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("User with mobile number +91" + cleanPhone + " not found.");
+        }
+
+        User user = userOpt.get();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
 }

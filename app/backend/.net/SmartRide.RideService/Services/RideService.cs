@@ -57,6 +57,34 @@ public class RideService : IRideService
         return dtos;
     }
 
+    public static decimal CalculateFare(string? source, string? destination, int? vehicleId)
+    {
+        if (string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(destination)) return 150.00m;
+        string combined = (source + destination).ToLowerInvariant().Trim();
+        int hash = 0;
+        for (int i = 0; i < combined.Length; i++)
+        {
+            hash = (hash << 5) - hash + combined[i];
+        }
+        double distKm = 2.2 + (Math.Abs(hash) % 143) / 10.0;
+        decimal baseFare = 50.00m;
+        decimal perKm = 12.00m;
+        if (vehicleId.HasValue)
+        {
+            if (vehicleId == 3 || vehicleId == 6)
+            {
+                baseFare = 120.00m;
+                perKm = 22.00m;
+            }
+            else if (vehicleId == 2 || vehicleId == 5)
+            {
+                baseFare = 80.00m;
+                perKm = 16.00m;
+            }
+        }
+        return Math.Round(baseFare + (decimal)distKm * perKm);
+    }
+
     public async Task<RideDto> CreateRideAsync(CreateRideRequest request)
     {
         if (request == null) throw new ArgumentNullException(nameof(request));
@@ -65,12 +93,18 @@ public class RideService : IRideService
         if (string.IsNullOrWhiteSpace(request.Source)) throw new ArgumentException("Source location is required.");
         if (string.IsNullOrWhiteSpace(request.Destination)) throw new ArgumentException("Destination location is required.");
 
+        int targetVehicleId = request.VehicleId.Value > 0 ? request.VehicleId.Value : 1;
+        decimal rideFare = request.Fare.HasValue && request.Fare.Value > 0
+            ? request.Fare.Value
+            : CalculateFare(request.Source, request.Destination, targetVehicleId);
+
         var ride = new Ride(
             request.UserId.Value,
-            request.VehicleId.Value,
+            targetVehicleId,
             request.Source.Trim(),
             request.Destination.Trim(),
-            0
+            0,
+            rideFare
         );
 
         _context.Rides.Add(ride);
@@ -111,6 +145,11 @@ public class RideService : IRideService
     {
         var ride = await _context.Rides.FindAsync(rideId)
             ?? throw new KeyNotFoundException($"Ride not found with ID: {rideId}");
+
+        if (ride.Status != 0)
+        {
+            throw new InvalidOperationException($"Ride #{rideId} is no longer available. Current status: {ride.Status}");
+        }
 
         ride.Status = 3; // 3 = Accepted
         await _context.SaveChangesAsync();
@@ -190,6 +229,9 @@ public class RideService : IRideService
         var driverRide = await _context.DriverRides.FirstOrDefaultAsync(dr => dr.RideId == ride.RideId);
         int? driverId = driverRide?.DriverId;
         string? createdAtStr = ride.CreatedAt?.ToString("o");
+        decimal fareVal = ride.Fare.HasValue && ride.Fare.Value > 0
+            ? ride.Fare.Value
+            : CalculateFare(ride.Source, ride.Destination, ride.VehicleId);
 
         return new RideDto(
             ride.RideId,
@@ -199,7 +241,8 @@ public class RideService : IRideService
             ride.Destination,
             ride.Status,
             driverId,
-            createdAtStr
+            createdAtStr,
+            fareVal
         );
     }
 }

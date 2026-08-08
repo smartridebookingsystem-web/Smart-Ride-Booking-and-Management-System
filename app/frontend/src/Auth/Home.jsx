@@ -22,7 +22,7 @@ export default function Home5() {
           <div className="row align-items-center gy-5">
             {/* Left Content */}
 
-            <div className="col-lg-6">
+            <div className="col-lg-8">
               <span
                 className="badge rounded-pill px-3 py-2 mb-3"
                 style={{
@@ -101,10 +101,10 @@ export default function Home5() {
               </div>
             </div>
 
-            {/* Right Booking Card */}
 
-            <div className="col-lg-6">
-              <div
+
+            <div className="col-lg-4">
+              {/* <div
                 className="card border-0 shadow-lg"
                 style={{
                   borderRadius: "20px",
@@ -174,6 +174,7 @@ export default function Home5() {
                   </button>
                 </div>
               </div>
+             */}
             </div>
           </div>
         </div>

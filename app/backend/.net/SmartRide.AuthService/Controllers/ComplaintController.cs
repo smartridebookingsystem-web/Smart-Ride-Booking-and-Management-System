@@ -16,6 +16,7 @@ public class ComplaintController : ControllerBase
     }
 
     [HttpGet]
+    [HttpGet("all")]
     public async Task<ActionResult<List<Complaint>>> GetAllComplaints()
     {
         var complaints = await _complaintService.GetAllComplaintsAsync();

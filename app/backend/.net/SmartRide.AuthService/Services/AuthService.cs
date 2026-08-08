@@ -70,6 +70,12 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Invalid mobile number/username or password");
         }
 
+        string userStatus = (user.Status ?? "active").ToLowerInvariant();
+        if (userStatus == "inactive" || userStatus == "deactivated" || userStatus == "disabled" || userStatus == "suspended")
+        {
+            throw new InvalidOperationException("Your account is currently Inactive. Please contact customer support to reactivate your account.");
+        }
+
         string roleName = user.Role != null ? user.Role.RoleValue : "rider";
         string token = _jwtService.GenerateToken(user.UserId, user.Username, user.Email, roleName);
 
@@ -145,7 +151,7 @@ public class AuthService : IAuthService
             Gender = registerRequest.Gender,
             RoleId = role.RoleId,
             Role = role,
-            Status = "active",
+            Status = "driver".Equals(requestedRole, StringComparison.OrdinalIgnoreCase) ? "Pending Verification" : "active",
             ProfileImage = registerRequest.ProfileImage ?? "default.jpg"
         };
 
@@ -165,6 +171,31 @@ public class AuthService : IAuthService
         }
 
         return user;
+    }
+
+    public async Task ResetPasswordAsync(string phone, string newPassword)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            throw new InvalidOperationException("Mobile number is required.");
+        }
+        if (string.IsNullOrWhiteSpace(newPassword))
+        {
+            throw new InvalidOperationException("New password is required.");
+        }
+
+        string cleanPhone = Regex.Replace(phone, @"^\+91", "");
+        cleanPhone = Regex.Replace(cleanPhone, @"[^0-9]", "");
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Phone == cleanPhone || u.Phone == "+91" + cleanPhone || u.Username == cleanPhone);
+        if (user == null)
+        {
+            throw new InvalidOperationException($"User with mobile number +91{cleanPhone} not found.");
+        }
+
+        user.Password = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        _context.Users.Update(user);
+        await _context.SaveChangesAsync();
     }
 
     public IDictionary<string, object> ValidateToken(string token)

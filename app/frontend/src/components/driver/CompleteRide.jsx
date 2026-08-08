@@ -15,6 +15,7 @@ export default function CompleteRide() {
     async function loadCurrentRide() {
       try {
         const rides = await rideApi.getAllRides();
+        const users = await authApi.getAllUsers();
         if (Array.isArray(rides) && rides.length > 0) {
           const latest = rides[rides.length - 1];
           const fare = parseFloat(rideApi.calculateRideFare(latest));
@@ -25,14 +26,10 @@ export default function CompleteRide() {
             if (ride.username) return ride.username;
 
             const uId = Number(ride.userId || ride.user_id);
-            if (uId === 3) return "dhananjay";
-            if (uId === 4) return "keshav";
-            if (uId === 6) return "rutuja";
-            if (uId === 8) return "aaditya";
-            if (uId === 10) return "priyansh";
-            if (uId === 12) return "vaibhav";
+            const user = users.find(u => u.userId === uId);
+            if (user) return user.username;
 
-            return `Passenger #${uId}`;
+            return `Passenger #${user.username}`;
           };
 
           setRideData({

@@ -14,6 +14,27 @@ export default function Driverdashboard() {
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
   const [totalEarningsBadge, setTotalEarningsBadge] = useState("₹1,250");
   const [pendingBadge, setPendingBadge] = useState("3 New");
+  const [ridesCompleted, setRidesCompleted] = useState(0);
+  const [driverProfile, setDriverProfile] = useState(null);
+  const [isVerified, setIsVerified] = useState(true);
+
+  useEffect(() => {
+    async function loadDriverProfile() {
+      try {
+        const prof = await authApi.getProfile();
+        if (prof) {
+          setDriverProfile(prof);
+          const st = (prof.status || "").toLowerCase();
+          const ver = st === "verified" || st === "active";
+          setIsVerified(ver);
+          if (!ver) setIsOnline(false);
+        }
+      } catch (err) {
+        console.warn("Could not load driver profile in header:", err);
+      }
+    }
+    loadDriverProfile();
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -26,6 +47,8 @@ export default function Driverdashboard() {
     async function fetchHeaderStats() {
       try {
         const rides = await rideApi.getAllRides();
+        const completedRides = rides.filter(r => r.status === 1).length;
+        setRidesCompleted(completedRides);
         if (Array.isArray(rides) && rides.length > 0) {
           const fareSum = rides.reduce((sum, r) => sum + parseFloat(rideApi.calculateRideFare(r)), 0);
           setTotalEarningsBadge(`₹${fareSum.toFixed(2)}`);
@@ -41,6 +64,10 @@ export default function Driverdashboard() {
 
   // Sync duty status to backend with localStorage fallback
   const handleToggleDuty = async () => {
+    if (!isVerified) {
+      alert("⚠️ Account Verification Pending: Your driver account is not verified by Admin yet. Access to ride requests is locked until Admin approval.");
+      return;
+    }
     if (dutyToggling) return;
     const newStatus = !isOnline;
     setDutyToggling(true);
@@ -113,9 +140,15 @@ export default function Driverdashboard() {
                   <span className="badge bg-warning bg-opacity-20 text-warning px-2.5 py-1 rounded-pill small fw-bold border border-warning border-opacity-30">
                     <i className="bi bi-star-fill me-1"></i>4.95 ★
                   </span>
-                  <span className="badge bg-info bg-opacity-20 text-info px-2.5 py-1 rounded-pill small fw-bold border border-info border-opacity-30">
-                    <i className="bi bi-shield-check me-1"></i>Verified
-                  </span>
+                  {isVerified ? (
+                    <span className="badge bg-info bg-opacity-20 text-info px-2.5 py-1 rounded-pill small fw-bold border border-info border-opacity-30">
+                      <i className="bi bi-shield-check me-1"></i>Verified Driver
+                    </span>
+                  ) : (
+                    <span className="badge bg-danger bg-opacity-20 text-danger px-2.5 py-1 rounded-pill small fw-bold border border-danger border-opacity-30">
+                      <i className="bi bi-exclamation-triangle-fill me-1"></i>Unverified Account
+                    </span>
+                  )}
                 </div>
                 <div className="text-light opacity-75 small mt-1 d-flex align-items-center gap-3">
                   <span><i className="bi bi-car-front-fill text-warning me-1"></i>MH-12-AB-4021 (Sedan)</span>
@@ -137,12 +170,12 @@ export default function Driverdashboard() {
                 </div>
                 <div className="border-end border-white border-opacity-20" style={{ height: "24px" }}></div>
                 <div className="text-center">
-                  <div className="text-warning fw-bold fs-6">₹1,250</div>
+                  <div className="text-warning fw-bold fs-6">{totalEarningsBadge}</div>
                   <div className="text-light opacity-75" style={{ fontSize: "0.68rem" }}>Today's Earnings</div>
                 </div>
                 <div className="border-end border-white border-opacity-20" style={{ height: "24px" }}></div>
                 <div className="text-center">
-                  <div className="text-success fw-bold fs-6">8</div>
+                  <div className="text-success fw-bold fs-6">{ridesCompleted}</div>
                   <div className="text-light opacity-75" style={{ fontSize: "0.68rem" }}>Trips Done</div>
                 </div>
               </div>
@@ -151,8 +184,8 @@ export default function Driverdashboard() {
               <button
                 type="button"
                 className={`btn fw-bold px-4 py-2 rounded-pill shadow-lg d-flex align-items-center gap-2 transition-all ${isOnline
-                    ? "btn-success text-white border-2 border-success-subtle"
-                    : "btn-outline-danger text-danger bg-danger bg-opacity-10 border-2"
+                  ? "btn-success text-white border-2 border-success-subtle"
+                  : "btn-outline-danger text-danger bg-danger bg-opacity-10 border-2"
                   }`}
                 onClick={handleToggleDuty}
                 disabled={dutyToggling}

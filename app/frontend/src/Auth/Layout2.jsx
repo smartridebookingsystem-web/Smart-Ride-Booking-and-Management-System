@@ -225,9 +225,9 @@ export default function Layout() {
                 {/* <li className="mb-2">
                   <NavLink to="/services">Services</NavLink>
                 </li> */}
-                <li className="mb-2">
+                {/* <li className="mb-2">
                   <NavLink to="/driver">Become Driver</NavLink>
-                </li>
+                </li> */}
                 <li className="mb-2">
                   <NavLink to="/privacy">Privacy Policy</NavLink>
                 </li>

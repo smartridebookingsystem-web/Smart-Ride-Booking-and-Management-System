@@ -26,17 +26,21 @@ public class Ride
     [Column("status")]
     public int Status { get; set; } // 0 = Requested, 1 = Completed, 2 = InProgress, 3 = Accepted
 
+    [Column("fare")]
+    public decimal? Fare { get; set; }
+
     [Column("created_at")]
     public DateTime? CreatedAt { get; set; }
 
     public Ride() { }
 
-    public Ride(int userId, int vehicleId, string source, string destination, int status)
+    public Ride(int userId, int vehicleId, string source, string destination, int status, decimal? fare = null)
     {
         UserId = userId;
         VehicleId = vehicleId;
         Source = source;
         Destination = destination;
         Status = status;
+        Fare = fare;
     }
 }

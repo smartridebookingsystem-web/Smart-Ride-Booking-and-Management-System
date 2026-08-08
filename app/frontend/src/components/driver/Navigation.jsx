@@ -24,6 +24,7 @@ export default function Navigation() {
     async function loadActiveTrip() {
       try {
         const rides = await rideApi.getAllRides();
+        const users = await authApi.getAllUsers();
         if (Array.isArray(rides) && rides.length > 0) {
           // Sort by rideId ascending to find latest ride
           const sorted = [...rides].sort((a, b) => Number(a.rideId || a.id || 0) - Number(b.rideId || b.id || 0));
@@ -42,15 +43,14 @@ export default function Navigation() {
             if (ride.username) return ride.username;
 
             const uId = Number(ride.userId || ride.user_id);
-            if (uId === 3) return "dhananjay";
-            if (uId === 4) return "keshav";
-            if (uId === 6) return "rutuja";
-            if (uId === 8) return "aaditya";
-            if (uId === 10) return "priyansh";
-            if (uId === 12) return "vaibhav";
 
-            return `Passenger #${uId}`;
+            return `Passenger ${users.find(u => Number(u.userId || u.id) === uId)?.username || uId}`;
           };
+          const getPhoneNumber = (ride) => {
+            const uId = Number(ride.userId || ride.user_id);
+            return users.find(u => Number(u.userId || u.id) === uId)?.phone || "9876543210";
+          };
+
 
           setActiveTrip({
             rawRideId: rawId,
@@ -59,7 +59,7 @@ export default function Navigation() {
             source: targetRide.source || targetRide.pickup,
             vehicleId: targetRide.vehicleId,
             riderName: getRiderName(targetRide),
-            phone: "+91 98765 43210",
+            phone: getPhoneNumber(targetRide),
             pickup: targetRide.source || targetRide.pickup || "FC Road, Shivajinagar, Pune",
             destination: targetRide.destination || targetRide.dropLocation || "Hinjewadi Phase 1 (IT Park), Pune",
             distance: targetRide.distance || "4.5 km",
@@ -175,8 +175,8 @@ export default function Navigation() {
       {/* Page Title */}
       <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
         <div>
-          <h4 className="fw-bold text-dark mb-1">
-            <i className="bi bi-geo-alt-fill text-primary me-2"></i>Active Route Navigation
+          <h4 className="fw-bold text-light mb-1">
+            <i className="bi bi-geo-alt-fill text-light me-2"></i>Active Route Navigation
           </h4>
           <p className="text-secondary small mb-0">
             Live turn-by-turn navigation and trip progress tracking.

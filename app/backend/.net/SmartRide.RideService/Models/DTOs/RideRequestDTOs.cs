@@ -6,6 +6,7 @@ public class CreateRideRequest
     public int? VehicleId { get; set; }
     public string? Source { get; set; }
     public string? Destination { get; set; }
+    public decimal? Fare { get; set; }
 }
 
 public class AssignDriverRequest

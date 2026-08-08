@@ -339,6 +339,9 @@ public class RideService {
     }
 
 
+    @Autowired(required = false)
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     /*
      * ============================================================
      * ACCEPT RIDE
@@ -367,6 +370,30 @@ public class RideService {
             throw new IllegalArgumentException(
                     "Driver ID is required."
             );
+        }
+
+        if (jdbcTemplate != null) {
+            try {
+                List<String> statusList = jdbcTemplate.query(
+                    "SELECT d.status AS driver_status, u.status AS user_status FROM driver d JOIN users u ON d.user_id = u.user_id WHERE d.driver_id = ? OR d.user_id = ?",
+                    (rs, rowNum) -> {
+                        String dSt = rs.getString("driver_status");
+                        String uSt = rs.getString("user_status");
+                        return (dSt != null && !dSt.isBlank()) ? dSt : uSt;
+                    },
+                    driverId, driverId
+                );
+                if (!statusList.isEmpty()) {
+                    String driverStatus = statusList.get(0);
+                    if (driverStatus != null && (driverStatus.equalsIgnoreCase("unverified") || driverStatus.equalsIgnoreCase("Pending Verification") || driverStatus.equalsIgnoreCase("deactive") || driverStatus.equalsIgnoreCase("rejected"))) {
+                        throw new IllegalStateException("Access Denied: Driver account #" + driverId + " is not verified by Admin. Status: " + driverStatus);
+                    }
+                }
+            } catch (IllegalStateException ise) {
+                throw ise;
+            } catch (Exception e) {
+                System.err.println("[RideService] ⚠️ Driver status check warning: " + e.getMessage());
+            }
         }
 
 

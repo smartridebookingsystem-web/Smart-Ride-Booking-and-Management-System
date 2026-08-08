@@ -15,6 +15,7 @@ public class RouterValidator {
             "/api/auth/send-otp",
             "/api/auth/verify-otp",
             "/api/auth/check-availability",
+            "/api/auth/reset-password",
             "/api/ai",
             "/eureka"
     );

@@ -145,4 +145,20 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
         }
     }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
+        try {
+            String phone = body.get("phone");
+            String newPassword = body.get("password");
+            if (newPassword == null) {
+                newPassword = body.get("newPassword");
+            }
+
+            authService.resetPassword(phone, newPassword);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Password updated successfully!"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
 }

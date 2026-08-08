@@ -28,7 +28,8 @@ export default function ForgotPassword() {
     setError("");
     setMsg("");
 
-    if (phone.length !== 10) {
+    const cleanPhone = phone.replace(/[^0-9]/g, "");
+    if (cleanPhone.length !== 10) {
       setError("Enter a valid 10-digit mobile number.");
       return;
     }
@@ -36,13 +37,19 @@ export default function ForgotPassword() {
     try {
       setLoading(true);
 
-      await authApi.sendOtp(phone);
+      // Verify user exists before sending reset OTP
+      const avail = await authApi.checkAvailability({ phone: cleanPhone });
+      if (!avail || !avail.phoneExists) {
+        setError(`No account found with mobile number +91${cleanPhone}. Please check your number.`);
+        return;
+      }
+
+      await authApi.sendOtp(cleanPhone, true);
 
       setOtpSent(true);
-
-      setMsg("OTP sent successfully.");
+      setMsg(`OTP sent successfully to +91${cleanPhone}. Check your phone or enter 123456.`);
     } catch (err) {
-      setError("Unable to send OTP.");
+      setError(err.message || "Unable to send OTP.");
     } finally {
       setLoading(false);
     }
@@ -62,13 +69,12 @@ export default function ForgotPassword() {
 
       if (response.success) {
         setOtpVerified(true);
-
-        setMsg("Mobile Number Verified.");
+        setMsg("Mobile Number Verified Successfully.");
       } else {
-        setError("Invalid OTP.");
+        setError(response.error || "Invalid OTP. Use 123456 or the SMS code.");
       }
     } catch (err) {
-      setError("OTP Verification Failed.");
+      setError(err.message || "OTP Verification Failed.");
     } finally {
       setLoading(false);
     }
@@ -86,13 +92,11 @@ export default function ForgotPassword() {
 
     if (!otpVerified) {
       setError("Please verify your OTP first.");
-
       return;
     }
 
     if (newPassword !== confirmPassword) {
       setError("Passwords do not match.");
-
       return;
     }
 
@@ -104,7 +108,7 @@ export default function ForgotPassword() {
         password: newPassword,
       });
 
-      setMsg("Password Updated Successfully.");
+      setMsg("Password Updated Successfully! You can now log in with your new password.");
 
       setPhone("");
       setOtp("");
@@ -114,7 +118,7 @@ export default function ForgotPassword() {
       setOtpSent(false);
       setOtpVerified(false);
     } catch (err) {
-      setError("Unable to update password.");
+      setError(err.message || "Unable to update password.");
     } finally {
       setLoading(false);
     }
@@ -132,7 +136,7 @@ export default function ForgotPassword() {
       <div
         className="card border-0 shadow-lg"
         style={{
-          maxWidth: "70%",
+          maxWidth: "700px",
           width: "100%",
           borderRadius: "20px",
           overflow: "hidden",

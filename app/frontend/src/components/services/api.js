@@ -1,17 +1,11 @@
 
-// src/components/services/api.js
+
 
 import { uploadToFirebaseStorage } from "../../config/firebase.js";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:8088";
-
-/*
- * ============================================================
- * COMMON API LOGGING
- * ============================================================
- */
-
+// import.meta.env.VITE_API_URL || "http://localhost:8088";
 const logRequest = (method, url, payload) => {
   console.log(
     `%c[API REQUEST] 🚀 ${method} ${url}`,

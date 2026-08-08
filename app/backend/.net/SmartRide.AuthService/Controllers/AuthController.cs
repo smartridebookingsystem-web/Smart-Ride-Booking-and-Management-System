@@ -178,4 +178,25 @@ public class AuthController : ControllerBase
             return BadRequest(new { success = false, error = ex.Message });
         }
     }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] Dictionary<string, string> body)
+    {
+        try
+        {
+            string phone = body.TryGetValue("phone", out var pVal) ? pVal : "";
+            string newPassword = body.TryGetValue("password", out var passVal) ? passVal : "";
+            if (string.IsNullOrWhiteSpace(newPassword))
+            {
+                newPassword = body.TryGetValue("newPassword", out var newPassVal) ? newPassVal : "";
+            }
+
+            await _authService.ResetPasswordAsync(phone, newPassword);
+            return Ok(new { success = true, message = "Password updated successfully!" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, error = ex.Message });
+        }
+    }
 }

@@ -10,10 +10,11 @@ public class RideDto
     public int Status { get; set; }
     public int? DriverId { get; set; }
     public string? CreatedAt { get; set; }
+    public decimal? Fare { get; set; }
 
     public RideDto() { }
 
-    public RideDto(int rideId, int userId, int vehicleId, string source, string destination, int status, int? driverId, string? createdAt)
+    public RideDto(int rideId, int userId, int vehicleId, string source, string destination, int status, int? driverId, string? createdAt, decimal? fare = null)
     {
         RideId = rideId;
         UserId = userId;
@@ -23,5 +24,6 @@ public class RideDto
         Status = status;
         DriverId = driverId;
         CreatedAt = createdAt;
+        Fare = fare;
     }
 }

@@ -102,4 +102,14 @@ public class AiChatController : ControllerBase
         }
         return Ok(new { message = $"Session '{sessionId}' successfully deleted." });
     }
+
+    /// <summary>
+    /// Health check endpoint.
+    /// </summary>
+    [HttpGet("health")]
+    [ProducesResponseType(typeof(ChatResponse), StatusCodes.Status200OK)]
+    public IActionResult Health()
+    {
+        return Ok(new ChatResponse("SmartRide AI Service is running.", null));
+    }
 }

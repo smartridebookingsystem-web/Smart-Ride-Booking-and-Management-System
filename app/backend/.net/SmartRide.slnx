@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="SmartRide.AiService/SmartRide.AiService.csproj" />
+  <Project Path="SmartRide.ApiGateway/SmartRide.ApiGateway.csproj" />
+  <Project Path="SmartRide.AuthService/SmartRide.AuthService.csproj" />
+  <Project Path="SmartRide.PaymentService/SmartRide.PaymentService.csproj" />
+  <Project Path="SmartRide.RideService/SmartRide.RideService.csproj" />
+</Solution>

@@ -50,10 +50,10 @@ public class OtpService {
             try {
                 sendTwilioSms(formattedPhone, otp);
             } catch (Exception e) {
-                System.err.println("[OtpService] Twilio error: " + e.getMessage());
-                // Still store OTP in memory for dev/test fallback if needed
+                System.err.println("[OtpService] Twilio delivery error (" + e.getMessage() + "). Falling back to dev OTP mode for " + formattedPhone + ": " + otp);
+                // Fallback to storing OTP in memory so registration can proceed
                 otpStore.put(cleanPhone, new OtpEntry(otp, Instant.now().plusSeconds(OTP_TTL_SECONDS)));
-                throw new RuntimeException(e.getMessage());
+                return;
             }
         } else {
             System.out.println("[OtpService] (Dev Mode) Generated OTP for " + formattedPhone + ": " + otp);

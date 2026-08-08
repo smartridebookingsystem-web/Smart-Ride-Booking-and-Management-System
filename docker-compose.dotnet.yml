@@ -1,0 +1,173 @@
+services:
+  # MySQL Database Service
+  mysql-db:
+    image: mysql:8.0
+    container_name: srbms-dotnet-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-p03_srbms}
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./database:/docker-entrypoint-initdb.d
+      - mysql_dotnet_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # .NET Auth Service
+  dotnet-auth-service:
+    build:
+      context: ./app/backend/.net/SmartRide.AuthService
+      dockerfile: Dockerfile
+    container_name: srbms-dotnet-auth-service
+    restart: always
+    ports:
+      - "8091:8081"
+    environment:
+      - ConnectionStrings__DefaultConnection=server=mysql-db;port=3306;database=p03_srbms;user=root;password=${MYSQL_ROOT_PASSWORD:-root};SSL Mode=None;
+      - Jwt__Secret=${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+
+  # .NET Payment Service
+  dotnet-payment-service:
+    build:
+      context: ./app/backend/.net/SmartRide.PaymentService
+      dockerfile: Dockerfile
+    container_name: srbms-dotnet-payment-service
+    restart: always
+    ports:
+      - "8093:8083"
+    environment:
+      - ConnectionStrings__DefaultConnection=server=mysql-db;port=3306;database=p03_srbms;user=root;password=${MYSQL_ROOT_PASSWORD:-root};SSL Mode=None;
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+
+  # .NET Ride Service
+  dotnet-ride-service:
+    build:
+      context: ./app/backend/.net/SmartRide.RideService
+      dockerfile: Dockerfile
+    container_name: srbms-dotnet-ride-service
+    restart: always
+    ports:
+      - "8092:8082"
+    environment:
+      - ConnectionStrings__DefaultConnection=server=mysql-db;port=3306;database=p03_srbms;user=root;password=${MYSQL_ROOT_PASSWORD:-root};SSL Mode=None;
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+
+  # .NET AI Service
+  dotnet-ai-service:
+    build:
+      context: ./app/backend/.net/SmartRide.AiService
+      dockerfile: Dockerfile
+    container_name: srbms-dotnet-ai-service
+    restart: always
+    ports:
+      - "8094:8084"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - Jwt__Secret=${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+
+  # .NET API Gateway
+  dotnet-api-gateway:
+    build:
+      context: ./app/backend/.net/SmartRide.ApiGateway
+      dockerfile: Dockerfile
+    container_name: srbms-dotnet-api-gateway
+    restart: always
+    ports:
+      - "8090:8090"
+    environment:
+      - ReverseProxy__Clusters__auth-cluster__Destinations__destination1__Address=http://dotnet-auth-service:8081
+      - ReverseProxy__Clusters__payment-cluster__Destinations__destination1__Address=http://dotnet-payment-service:8083
+      - ReverseProxy__Clusters__ride-cluster__Destinations__destination1__Address=http://dotnet-ride-service:8082
+      - ReverseProxy__Clusters__ai-cluster__Destinations__destination1__Address=http://dotnet-ai-service:8084
+    depends_on:
+      - dotnet-auth-service
+      - dotnet-payment-service
+      - dotnet-ride-service
+      - dotnet-ai-service
+
+  # Admin Frontend
+  frontend-admin:
+    build:
+      context: ./app/frontend
+      dockerfile: Dockerfile
+    container_name: srbms-dotnet-frontend-admin
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_APP_ROLE=admin
+      - VITE_API_URL=http://localhost:8090
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./app/frontend/src:/app/src
+      - ./app/frontend/public:/app/public
+      - ./app/frontend/vite.config.js:/app/vite.config.js
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    depends_on:
+      - dotnet-api-gateway
+
+  # Driver Frontend
+  frontend-driver:
+    build:
+      context: ./app/frontend
+      dockerfile: Dockerfile
+    container_name: srbms-dotnet-frontend-driver
+    restart: always
+    ports:
+      - "5174:5174"
+    environment:
+      - VITE_APP_ROLE=driver
+      - VITE_API_URL=http://localhost:8090
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./app/frontend/src:/app/src
+      - ./app/frontend/public:/app/public
+      - ./app/frontend/vite.config.js:/app/vite.config.js
+    command: npm run dev -- --host 0.0.0.0 --port 5174
+    depends_on:
+      - dotnet-api-gateway
+
+  # Rider Frontend
+  frontend-rider:
+    build:
+      context: ./app/frontend
+      dockerfile: Dockerfile
+    container_name: srbms-dotnet-frontend-rider
+    restart: always
+    ports:
+      - "5175:5175"
+    environment:
+      - VITE_APP_ROLE=rider
+      - VITE_API_URL=http://localhost:8090
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./app/frontend/src:/app/src
+      - ./app/frontend/public:/app/public
+      - ./app/frontend/vite.config.js:/app/vite.config.js
+    command: npm run dev -- --host 0.0.0.0 --port 5175
+    depends_on:
+      - dotnet-api-gateway
+
+volumes:
+  mysql_dotnet_data:

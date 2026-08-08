@@ -10,6 +10,7 @@ import DriverOtpModal from "./DriverOtpModal";
 import DriverRecentTrips from "./DriverRecentTrips";
 
 export default function DriverHome() {
+
   const getRiderNameFromDb = (ride) => {
     if (!ride) return "Passenger";
     if (ride.riderName) return ride.riderName;
@@ -19,12 +20,12 @@ export default function DriverHome() {
     const uId = Number(ride.userId || ride.user_id);
     if (uId === 3) return "dhananjay";
     if (uId === 4) return "keshav";
-    if (uId === 6) return "rutuja";
+    if (uId === 6) return "mahesh";
     if (uId === 8) return "aaditya";
     if (uId === 10) return "priyansh";
     if (uId === 12) return "vaibhav";
 
-    return `Passenger #${uId}`;
+    return `Passenger ${uId}`;
   };
   const { user } = useSelector((state) => state.auth || {});
 
@@ -45,6 +46,7 @@ export default function DriverHome() {
 
   const [notice, setNotice] = useState("");
   const [countdown, setCountdown] = useState(60);
+  const [ridesCompleted, setRidesCompleted] = useState(0);
 
   const [isMuted, setIsMuted] = useState(
     ringtoneService.getIsMuted()
@@ -68,20 +70,44 @@ export default function DriverHome() {
     return saved;
   });
 
+  const [driverProfile, setDriverProfile] = useState(null);
+  const [isVerified, setIsVerified] = useState(true);
+
+  useEffect(() => {
+    const fetchDriverProfile = async () => {
+      try {
+        const prof = await authApi.getProfile();
+        if (prof) {
+          setDriverProfile(prof);
+          const st = (prof.status || "").toLowerCase();
+          const ver = st === "verified" || st === "active";
+          setIsVerified(ver);
+        }
+      } catch (err) {
+        console.warn("[DriverHome] Profile fetch error:", err);
+      }
+    };
+    fetchDriverProfile();
+  }, []);
+
   /* =========================================================
      FETCH RIDES
-     
-     IMPORTANT:
-     Previously the API was called only once.
-     Now it is called immediately and every 3 seconds.
   ========================================================= */
 
   useEffect(() => {
     let isMounted = true;
 
     const fetchRides = async () => {
+      if (!isVerified) {
+        if (isMounted) setRidesList([]);
+        return;
+      }
+
       try {
-        const data = await rideApi.getAllRides();
+        const allRides = await rideApi.getAllRides();
+        const completedRides = allRides.filter(r => r.status === 1).length;
+        setRidesCompleted(completedRides);
+        const data = allRides.sort((a, b) => b.rideId - a.rideId);
 
         console.log(
           "[Driver Dispatch] 📥 Latest rides from backend:",
@@ -111,7 +137,7 @@ export default function DriverHome() {
       isMounted = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [isVerified]);
 
   /* =========================================================
      DRIVER AREA CHECK
@@ -877,6 +903,7 @@ export default function DriverHome() {
           handleDeclineRide={
             handleDeclineRide
           }
+          isVerified={isVerified}
         />
       )}
 
@@ -1276,9 +1303,7 @@ export default function DriverHome() {
             </small>
 
             <h3 className="fw-bold text-success mb-0">
-              {ridesList.length > 0
-                ? `${ridesList.length} Rides`
-                : "8 Rides"}
+              {ridesCompleted}
             </h3>
 
             <small className="text-light opacity-75 fw-semibold mt-1 d-block">
@@ -1443,7 +1468,7 @@ export default function DriverHome() {
 
                 <small className="text-warning">
                   <i className="bi bi-star-fill me-1"></i>
-                  4.95 Rating (124 Reviews)
+                  4.95 Rating ({ridesCompleted} reviews)
                 </small>
 
                 <span className="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30 d-block mt-1 small">
@@ -1463,7 +1488,7 @@ export default function DriverHome() {
                 </small>
 
                 <strong className="text-white fs-6">
-                  342
+                  {ridesCompleted}
                 </strong>
               </div>
 
@@ -1511,12 +1536,12 @@ export default function DriverHome() {
               String(r.status).toUpperCase() === "FINISHED"
           ).length > 0
             ? ridesList.filter(
-                (r) =>
-                  r.status === 3 ||
-                  r.status === "3" ||
-                  String(r.status).toUpperCase() === "COMPLETED" ||
-                  String(r.status).toUpperCase() === "FINISHED"
-              )
+              (r) =>
+                r.status === 3 ||
+                r.status === "3" ||
+                String(r.status).toUpperCase() === "COMPLETED" ||
+                String(r.status).toUpperCase() === "FINISHED"
+            )
             : ridesList
         }
       />

@@ -4,7 +4,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { rideApi } from "../services/api";
+import { authApi, rideApi } from "../services/api";
 import { getDriverIdFromUser, saveActiveRideMeta } from "../../utils/rideFlow";
 
 export default function RideRequests() {
@@ -17,25 +17,29 @@ export default function RideRequests() {
   const [loading, setLoading] = useState(true);
   const [acceptingRideId, setAcceptingRideId] = useState(null);
   const [error, setError] = useState("");
+  const [isVerified, setIsVerified] = useState(true);
 
-  /*
-   * ============================================================
-   * FETCH RIDE REQUESTS
-   * ============================================================
-   *
-   * Backend:
-   * GET /api/rides
-   *
-   * New rides are created with:
-   * status = 0
-   *
-   * Therefore we display:
-   * status === 0
-   *
-   * We do NOT use status === 2 here because your backend uses
-   * status 2 for "In Progress".
-   */
+  useEffect(() => {
+    const checkVerification = async () => {
+      try {
+        const prof = await authApi.getProfile();
+        if (prof) {
+          const st = (prof.status || "").toLowerCase();
+          setIsVerified(st === "verified" || st === "active");
+        }
+      } catch (e) {
+        console.warn("Could not check driver verification:", e);
+      }
+    };
+    checkVerification();
+  }, []);
+
   const fetchRequests = useCallback(async () => {
+    if (!isVerified) {
+      setLoading(false);
+      setRequests([]);
+      return;
+    }
     try {
       setLoading(true);
       setError("");
@@ -80,7 +84,7 @@ export default function RideRequests() {
        */
       const pendingRequests = allRides.filter(
         (ride) => Number(ride.status) === 0
-      );
+      ).sort((a, b) => b.rideId - a.rideId);
 
       console.log(
         "%c[Driver] 🚕 Pending ride requests:",
@@ -277,6 +281,33 @@ export default function RideRequests() {
           <p className="text-muted mb-0">
             Checking for available rider requests.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isVerified) {
+    return (
+      <div className="container-fluid py-4">
+        <div
+          className="card border-0 shadow-lg rounded-4 p-5 text-center text-white"
+          style={{
+            background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
+            border: "1px solid rgba(239, 68, 68, 0.4)",
+            borderLeft: "6px solid #EF4444",
+          }}
+        >
+          <i className="bi bi-shield-lock-fill text-danger mb-3" style={{ fontSize: "4rem" }}></i>
+          <h3 className="fw-bold text-danger mb-2">Driver Account Not Verified</h3>
+          <p className="text-light opacity-90 mx-auto mb-4" style={{ maxWidth: "600px" }}>
+            You are not authorized to view or accept ride requests because your driver account status is currently{" "}
+            <strong>Unverified / Pending Admin Verification</strong>. Please wait for Administrator approval of your license and documents.
+          </p>
+          <div>
+            <span className="badge bg-danger px-3 py-2 fs-6 rounded-pill">
+              <i className="bi bi-lock-fill me-1"></i>Ride Access Locked
+            </span>
+          </div>
         </div>
       </div>
     );

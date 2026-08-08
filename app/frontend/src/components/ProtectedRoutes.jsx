@@ -24,9 +24,9 @@ export default function ProtectedRoutes({ children, role }) {
     const requiredRole = normalizeRole(role);
     const userRole = normalizeRole(
       loginstate.user.role !== undefined ? loginstate.user.role :
-      loginstate.user.role_id !== undefined ? loginstate.user.role_id :
-      loginstate.user.roleName !== undefined ? loginstate.user.roleName :
-      loginstate.user.role_value
+        loginstate.user.role_id !== undefined ? loginstate.user.role_id :
+          loginstate.user.roleName !== undefined ? loginstate.user.roleName :
+            loginstate.user.role_value
     );
 
     if (requiredRole !== userRole) {

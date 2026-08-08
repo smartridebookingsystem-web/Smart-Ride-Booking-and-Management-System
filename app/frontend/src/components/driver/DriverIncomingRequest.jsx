@@ -10,7 +10,33 @@ export default function DriverIncomingRequest({
   handleTestSound,
   handleAcceptRide,
   handleDeclineRide,
+  isVerified = true,
 }) {
+  if (!isVerified) {
+    return (
+      <div
+        className="card border-0 shadow-lg rounded-4 p-4 text-white text-center"
+        style={{
+          background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
+          border: "1px solid rgba(239, 68, 68, 0.4)",
+          borderLeft: "6px solid #EF4444",
+        }}
+      >
+        <div className="py-4">
+          <i className="bi bi-shield-lock-fill text-danger mb-2" style={{ fontSize: "3.5rem" }}></i>
+          <h4 className="fw-bold text-danger mb-2">Driver Account Not Verified</h4>
+          <p className="text-light opacity-90 mb-3 mx-auto" style={{ maxWidth: "600px" }}>
+            Your driver account status is currently <strong>Unverified / Pending Admin Approval</strong>.
+            You cannot receive, view, or accept ride requests until your license documents and profile are verified by an Administrator.
+          </p>
+          <span className="badge bg-danger px-3 py-2 fs-6 rounded-pill">
+            <i className="bi bi-lock-fill me-1"></i>Access Restricted
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   if (!pendingRequest) {
     return (
       <div

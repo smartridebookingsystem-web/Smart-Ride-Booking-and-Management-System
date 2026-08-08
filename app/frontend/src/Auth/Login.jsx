@@ -13,7 +13,7 @@ export default function Login() {
     if (authState.isAuthenticated && authState.user) {
       const r = authState.user.role || authState.user.roleName;
       const userRole = (r === 1 || r === "1" || r === "admin" || r === "ADMIN") ? 1
-                     : (r === 2 || r === "2" || r === "driver" || r === "DRIVER") ? 2 : 3;
+        : (r === 2 || r === "2" || r === "driver" || r === "DRIVER") ? 2 : 3;
 
       if (userRole === 1) navigate("/admin", { replace: true });
       else if (userRole === 2) navigate("/driver", { replace: true });
@@ -93,7 +93,7 @@ export default function Login() {
       <div
         className="card border-0 shadow-lg"
         style={{
-          maxWidth: "500px",
+          maxWidth: "700px",
           width: "100%",
           borderRadius: "20px",
           overflow: "hidden",
